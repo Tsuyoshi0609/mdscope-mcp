@@ -1,0 +1,17 @@
+# conda 環境の定義。使い方は docs/setup.md
+name: mdscope
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - mdanalysis>=2.8
+  - netcdf4          # AMBER NetCDF 軌道
+  - mrcfile          # 密度マップ（目標 4）
+  - numpy
+  - pytest
+  - ruff
+  - pip
+  - pip:
+      - fastmcp>=2.0
+      - MDAnalysisTests>=2.8
+      - -e .

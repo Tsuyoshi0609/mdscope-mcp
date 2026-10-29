@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mdscope-mcp"
+version = "0.0.1"
+description = "MCP server to view protein structures and MD trajectories from chat (Claude Code / Codex)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Tsuyoshi Kawai" }]
+dependencies = [
+    "fastmcp>=2.0",
+    "MDAnalysis>=2.8",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+amber = ["netCDF4>=1.6"]
+density = ["mrcfile>=1.5"]
+png = []            # pymol-open-source は pip に無い。conda-forge から入れる（docs/setup.md）
+dev = ["pytest>=8", "ruff>=0.5", "MDAnalysisTests>=2.8"]
+
+[project.scripts]
+mdscope-mcp = "mdscope.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+mdscope = ["viewer/*.html", "viewer/*.js"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
