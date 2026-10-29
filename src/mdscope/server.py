@@ -7,18 +7,25 @@ import logging
 import sys
 
 from fastmcp import FastMCP
+from fastmcp.apps import AppConfig, ResourceCSP
+from fastmcp.tools import ToolResult
 
 from mdscope import __version__, loader, payload, registry
 from mdscope.config import allowed_roots, cache_dir
-from mdscope.html import write_html
+from mdscope.html import read_payload, render_app_html, view_id, write_html
 from mdscope.serve import serve, view_url
 
 mcp = FastMCP("mdscope")
 
+# MCP Apps UI resource. Bump the version in the URI when the page changes incompatibly
+# (hosts cache ui:// resources).
+VIEWER_URI = "ui://mdscope/viewer/v1.html"
+PAYLOAD_KEY = "mdscope/payload"
+
 SHOW_HINT = (
-    "To show the viewer to the user: in Claude Code, publish artifacts[0].path with the Artifact "
-    "tool (it is a self-contained HTML page). Otherwise give the user artifacts[0].url if present "
-    "(served by `mdscope-mcp --serve`), else the file path to open in a browser."
+    "If the host rendered an inline 3D viewer, nothing else is needed. Otherwise: in Claude Code, "
+    "publish artifacts[0].path with the Artifact tool (self-contained HTML); else give the user "
+    "artifacts[0].url if present (served by `mdscope-mcp --serve`), else the file path."
 )
 
 
@@ -29,6 +36,12 @@ def info() -> dict:
         "cache_dir": str(cache_dir()),
         "loaded_systems": [{"system_id": s.system_id, "name": s.name} for s in registry.list_systems()],
     }
+
+
+@mcp.resource(VIEWER_URI, app=AppConfig(csp=ResourceCSP(resource_domains=[]), prefers_border=True))
+def viewer_app() -> str:
+    """Interactive 3D structure viewer (MCP App). 3Dmol.js is inlined; no network access needed."""
+    return render_app_html()
 
 
 @mcp.tool
@@ -54,7 +67,14 @@ def describe_system(system_id: str) -> dict:
     return loader.summarize(registry.get(system_id))
 
 
-@mcp.tool
+@mcp.tool(
+    app=AppConfig(resource_uri=VIEWER_URI),
+    meta={
+        "openai/outputTemplate": VIEWER_URI,
+        "openai/toolInvocation/invoking": "Building 3D view",
+        "openai/toolInvocation/invoked": "3D view ready",
+    },
+)
 def view_structure(
     system_id: str | None = None,
     topology: str | None = None,
@@ -65,29 +85,45 @@ def view_structure(
     color: str = "ss",
     highlight: str | None = None,
     title: str | None = None,
-) -> dict:
-    """Write an interactive 3D viewer (self-contained HTML, rotate/zoom in a browser) for one frame
-    of a loaded system. Give either system_id (from load_system) or topology (+ trajectory) to load
-    on the fly. selection: MDAnalysis selection of atoms to show (default 'protein'; bound ligands
-    are added automatically). style: cartoon|sticks|spheres|lines. color: ss|chain|rainbow|element.
-    highlight: optional selection drawn as magenta sticks on top. The result lists the HTML path
-    under artifacts; see how_to_show."""
+) -> ToolResult:
+    """Show an interactive 3D viewer (rotate/zoom) for one frame of a loaded system. Hosts that
+    support MCP Apps (ChatGPT, Claude Desktop) render it inline; others get a self-contained HTML
+    file path/URL. Give either system_id (from load_system) or topology (+ trajectory) to load on
+    the fly. selection: MDAnalysis selection of atoms to show (default 'protein'; bound ligands are
+    added automatically). style: cartoon|sticks|spheres|lines. color: ss|chain|rainbow|element.
+    highlight: optional selection drawn as magenta sticks on top."""
     if system_id is None and topology is None:
         raise ValueError("give system_id or topology")
     system = registry.get(system_id) if system_id else loader.load(topology, trajectory)
     data = payload.build_payload(system, selection, frame, style, color, highlight, title)
     html_path = write_html(data)
+
     summary = {k: v for k, v in data.items() if k not in ("pdb", "highlight_serials", "notes")}
+    summary["view_id"] = view_id(data)
     summary["html_size_mb"] = round(html_path.stat().st_size / 1e6, 2)
     artifact = {"kind": "html", "path": str(html_path), "caption": f"{data['title']}: {selection}, frame {frame}"}
     if url := view_url(html_path.name):
         artifact["url"] = url
-    return {
+    structured = {
         "summary": summary,
         "artifacts": [artifact],
         "warnings": data["notes"] + system.warnings,
         "how_to_show": SHOW_HINT,
     }
+    text = (
+        f"{data['title']}: {data['n_residues']} residues, {data['n_atoms']} atoms "
+        f"(selection '{selection}', frame {frame}, {style}/{color}). HTML: {html_path}"
+        + (f" URL: {artifact['url']}" if "url" in artifact else "")
+    )
+    # the viewer payload rides in _meta: delivered to the app, hidden from the model
+    return ToolResult(content=text, structured_content=structured, meta={PAYLOAD_KEY: data})
+
+
+@mcp.tool(app=AppConfig(visibility=["app"]))
+def get_view_payload(view_id: str) -> dict:
+    """Return the viewer payload (PDB text + display settings) of a previous view_structure call.
+    Used by the viewer app when the host does not forward tool-result metadata."""
+    return read_payload(view_id)
 
 
 def main() -> None:

@@ -52,7 +52,7 @@ def test_view_structure_tool_roundtrip(tmp_path, monkeypatch):
     async def go():
         async with Client(mcp) as c:
             r = await c.call_tool("view_structure", {"topology": str(D.PDB_small), "color": "chain"})
-            return r.data
+            return r.structured_content
 
     data = asyncio.run(go())
     assert data["artifacts"][0]["path"].endswith(".html")

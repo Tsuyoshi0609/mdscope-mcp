@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mdscope viewer</title>
+<style>/*__CSS__*/</style>
+<style>
+  html, body { min-height: 420px; }
+  #fullscreen { margin-left: auto; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <b id="title">mdscope</b>
+  <span class="meta" id="meta"></span>
+  <label>Style <select id="style">
+    <option value="cartoon">cartoon</option><option value="sticks">sticks</option>
+    <option value="spheres">spheres</option><option value="lines">lines</option></select></label>
+  <label>Color <select id="color">
+    <option value="ss">secondary structure</option><option value="chain">chain</option>
+    <option value="rainbow">rainbow (N→C)</option><option value="element">element</option></select></label>
+  <button id="reset">Reset view</button>
+  <button id="fullscreen" title="Toggle fullscreen">⤢</button>
+</div>
+<div id="wrap"><div id="viewer"><div id="status">waiting for structure data…</div></div><div id="notes"></div></div>
+
+<script>/*__3DMOL__*/</script>
+<script>/*__CORE__*/</script>
+<script>
+// MCP App bridge. Two hosts are supported without a build step:
+//  (a) MCP Apps (postMessage JSON-RPC): ui/initialize -> ui/notifications/tool-result
+//  (b) ChatGPT legacy globals: window.openai.toolResponseMetadata / toolOutput
+(function () {
+  const PAYLOAD_KEY = "mdscope/payload";
+  const PROTOCOL = "2026-01-26";
+  let api = null, mounted = false, displayMode = "inline";
+  const status = (t) => { const s = document.getElementById("status"); if (s) s.textContent = t; };
+
+  // --- find the viewer payload anywhere in a tool result envelope -----------------
+  function findPayload(obj, depth) {
+    if (!obj || typeof obj !== "object" || depth > 6) return null;
+    if (obj[PAYLOAD_KEY] && obj[PAYLOAD_KEY].pdb) return obj[PAYLOAD_KEY];
+    for (const k of Object.keys(obj)) {
+      const r = findPayload(obj[k], depth + 1);
+      if (r) return r;
+    }
+    return null;
+  }
+
+  function show(payload, dark) {
+    if (!payload || mounted) return;
+    mounted = true;
+    api = MdscopeViewer.mount(payload, { dark });
+    notifySize();
+  }
+
+  // --- (a) MCP Apps JSON-RPC over postMessage ------------------------------------
+  let nextId = 1;
+  const pending = new Map();
+  function send(msg) { window.parent.postMessage(Object.assign({ jsonrpc: "2.0" }, msg), "*"); }
+  function request(method, params) {
+    const id = nextId++;
+    return new Promise((resolve, reject) => {
+      pending.set(id, { resolve, reject });
+      send({ id, method, params });
+    });
+  }
+  function notify(method, params) { send({ method, params }); }
+  function notifySize() {
+    notify("ui/notifications/size-changed", { height: displayMode === "fullscreen" ? undefined : 460 });
+    if (window.openai && window.openai.notifyIntrinsicHeight) window.openai.notifyIntrinsicHeight(460);
+  }
+
+  let hostDark = null;
+  function applyContext(ctx) {
+    if (!ctx) return;
+    if (ctx.theme) { hostDark = ctx.theme === "dark"; if (api) api.setDark(hostDark); else MdscopeViewer.setTheme(hostDark); }
+    if (ctx.displayMode) { displayMode = ctx.displayMode; if (api) setTimeout(() => api.resize(), 50); }
+  }
+
+  async function fetchByViewId(viewId) {
+    // host stripped _meta: ask the server for the payload (app-only tool)
+    try {
+      const r = await request("tools/call", { name: "get_view_payload", arguments: { view_id: viewId } });
+      return (r && r.structuredContent) || findPayload(r, 0);
+    } catch (e) { status("could not load structure: " + (e && e.message)); return null; }
+  }
+
+  async function onToolResult(result) {
+    let p = findPayload(result, 0);
+    if (!p && result && result.structuredContent && result.structuredContent.view_id) {
+      p = await fetchByViewId(result.structuredContent.view_id);
+    }
+    if (p) show(p, hostDark); else status("tool result has no structure data");
+  }
+
+  window.addEventListener("message", (ev) => {
+    const m = ev.data;
+    if (!m || m.jsonrpc !== "2.0") return;
+    if (m.id !== undefined && pending.has(m.id)) {
+      const { resolve, reject } = pending.get(m.id); pending.delete(m.id);
+      m.error ? reject(new Error(m.error.message || "error")) : resolve(m.result);
+      return;
+    }
+    if (m.method === "ui/notifications/tool-result") onToolResult(m.params);
+    else if (m.method === "ui/notifications/host-context-changed") applyContext(m.params);
+    else if (m.method === "ui/notifications/request-teardown") { /* nothing to persist */ }
+  });
+
+  document.getElementById("fullscreen").onclick = async () => {
+    const mode = displayMode === "fullscreen" ? "inline" : "fullscreen";
+    if (window.openai && window.openai.requestDisplayMode) {
+      try { const r = await window.openai.requestDisplayMode({ mode }); applyContext({ displayMode: (r && r.mode) || mode }); } catch (e) {}
+      return;
+    }
+    try { const r = await request("ui/request-display-mode", { mode }); applyContext({ displayMode: (r && r.mode) || mode }); } catch (e) {}
+  };
+
+  // --- (b) ChatGPT legacy globals --------------------------------------------------
+  function tryOpenAI() {
+    const o = window.openai;
+    if (!o) return false;
+    applyContext({ theme: o.theme, displayMode: o.displayMode });
+    const p = findPayload(o.toolResponseMetadata, 0) || findPayload(o.toolOutput, 0);
+    if (p) { show(p, hostDark); return true; }
+    return false;
+  }
+  window.addEventListener("openai:set_globals", () => { if (!mounted) tryOpenAI(); else if (window.openai) applyContext({ theme: window.openai.theme, displayMode: window.openai.displayMode }); });
+
+  // --- start ---------------------------------------------------------------------
+  if (!tryOpenAI()) {
+    request("ui/initialize", {
+      protocolVersion: PROTOCOL,
+      appInfo: { name: "mdscope-viewer", version: "0.0.1" },
+      appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] },
+    }).then((res) => {
+      applyContext(res && res.hostContext);
+      notify("ui/notifications/initialized", {});
+    }).catch((e) => status("host did not answer ui/initialize: " + (e && e.message)));
+  }
+})();
+</script>
+</body>
+</html>
