@@ -50,11 +50,38 @@ def mdscope_info() -> dict:
     return info()
 
 
+PATH_NOTE = (
+    "Paths are on the machine where mdscope-mcp runs (possibly a remote host reached over SSH), "
+    "not on the client's machine; do not check them with local shell commands, use list_files."
+)
+
+
+@mcp.tool
+def list_files(path: str = "~", pattern: str = "*", max_entries: int = 200) -> dict:
+    """List files on the mdscope server host (structure/trajectory files and directories), within
+    the allowed roots. pattern is a glob such as '*.pdb' or '*.xtc'. Use this to find or verify
+    paths before load_system / view_structure."""
+    from mdscope.config import check_path
+
+    root = check_path(path)
+    if not root.is_dir():
+        raise NotADirectoryError(f"{root} is not a directory")
+    entries = []
+    for p in sorted(root.glob(pattern)):
+        if p.name.startswith("."):
+            continue
+        st = p.stat()
+        entries.append({"name": p.name, "dir": p.is_dir(), "size_mb": round(st.st_size / 1e6, 3)})
+        if len(entries) >= max_entries:
+            break
+    return {"path": str(root), "entries": entries, "truncated": len(entries) >= max_entries}
+
+
 @mcp.tool
 def load_system(topology: str, trajectory: str | list[str] | None = None, name: str | None = None) -> dict:
     """Load a structure file (.pdb/.gro/.cif/.tpr/.prmtop ...) and optionally trajectory file(s)
     (.xtc/.trr/.dcd/.nc ...). Returns a system_id and a composition summary (chains, ligands,
-    frames). Use the summary to write selection strings for view_structure."""
+    frames). Use the summary to write selection strings for view_structure. """ + PATH_NOTE
     system = loader.load(topology, trajectory, name)
     return loader.summarize(system)
 
@@ -91,7 +118,7 @@ def view_structure(
     file path/URL. Give either system_id (from load_system) or topology (+ trajectory) to load on
     the fly. selection: MDAnalysis selection of atoms to show (default 'protein'; bound ligands are
     added automatically). style: cartoon|sticks|spheres|lines. color: ss|chain|rainbow|element.
-    highlight: optional selection drawn as magenta sticks on top."""
+    highlight: optional selection drawn as magenta sticks on top. """ + PATH_NOTE
     if system_id is None and topology is None:
         raise ValueError("give system_id or topology")
     system = registry.get(system_id) if system_id else loader.load(topology, trajectory)
