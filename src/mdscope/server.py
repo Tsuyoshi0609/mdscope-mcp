@@ -13,14 +13,18 @@ from mdscope.config import allowed_roots, cache_dir
 mcp = FastMCP("mdscope")
 
 
-@mcp.tool
-def mdscope_info() -> dict:
-    """Return server version, allowed roots and cache directory (self-check)."""
+def info() -> dict:
     return {
         "version": __version__,
         "allowed_roots": [str(p) for p in allowed_roots()],
         "cache_dir": str(cache_dir()),
     }
+
+
+@mcp.tool
+def mdscope_info() -> dict:
+    """Return server version, allowed roots and cache directory (self-check)."""
+    return info()
 
 
 def main() -> None:
@@ -34,7 +38,7 @@ def main() -> None:
         ],
     )
     if "--check" in sys.argv:
-        print(mdscope_info.fn(), file=sys.stderr)
+        print(info(), file=sys.stderr)
         return
     mcp.run()
 
