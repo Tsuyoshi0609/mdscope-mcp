@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import html as html_mod
 import json
 from pathlib import Path
 
@@ -17,6 +18,7 @@ def render_html(payload: dict) -> str:
     data = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
     return (
         TEMPLATE.read_text(encoding="utf-8")
+        .replace("__TITLE__", html_mod.escape(f"mdscope: {payload.get('title', '')}"))
         .replace("/*__3DMOL__*/", LIB.read_text(encoding="utf-8"))
         .replace("__PAYLOAD_JSON__", data)
     )
