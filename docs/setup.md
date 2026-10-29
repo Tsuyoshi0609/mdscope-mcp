@@ -27,7 +27,7 @@ mamba install -n mdscope -c conda-forge pymol-open-source
 |---|---|---|
 | `MDSCOPE_ALLOWED_ROOTS` | `$HOME` | 読んでよいディレクトリ。`:` 区切り。**ここ以外のパスは拒否される** |
 | `MDSCOPE_CACHE_DIR` | `~/.cache/mdscope` | 生成した HTML / PNG とログの置き場 |
-| `MDSCOPE_VIEW_URL` | なし | `mdscope-mcp --serve` の URL（例 `http://192.168.1.102:8765`）。設定すると結果に `url` が付く（Codex 用、§4） |
+| `MDSCOPE_VIEW_URL` | なし | ブラウザから見た `mdscope-mcp --serve` の URL（例 `http://localhost:8765`）。設定すると結果に `url` が付く（Codex 用、§4） |
 
 データが `$HOME` の外にあるなら必ず設定する（例: `/data3/kawai`）。
 
@@ -57,24 +57,30 @@ claude mcp add --scope user mdscope -e MDSCOPE_ALLOWED_ROOTS="$HOME:/data3/kawai
 Codex には Artifact に相当する表示手段が無いので、生成した HTML を **HTTP で配信**して
 ブラウザで開く。2 段階。
 
-**(a) 配信サーバーを立てておく**（tmux などで常駐させる）:
+**(a) 配信サーバーを立てておく**（floyd 上、tmux などで常駐させる）:
 
 ```bash
 conda activate mdscope
-mdscope-mcp --serve --host 0.0.0.0 --port 8765    # ~/.cache/mdscope を配信
+mdscope-mcp --serve     # ~/.cache/mdscope を http://127.0.0.1:8765/ で配信
 ```
 
-`--host 0.0.0.0` は同じ LAN の端末から `http://<floyd の IP>:8765/` で開ける（他のユーザーにも見える）。
-LAN に出したくなければ既定の `127.0.0.1` のまま起動し、手元で
-`ssh -L 8765:127.0.0.1:8765 floyd` を張って `http://localhost:8765/` で開く。
+**(b) 手元のマシンから SSH ポート転送を張る**（張っている間だけ見える）:
 
-**(b) MCP サーバーを登録する**。`MDSCOPE_VIEW_URL` にブラウザから見た配信 URL を入れると、
+```bash
+ssh -N -L 8765:127.0.0.1:8765 kawai@floyd
+```
+
+ブラウザで `http://localhost:8765/` を開くと生成済み HTML の一覧が出る。
+`--serve --host 0.0.0.0` で LAN に直接公開することもできるが、floyd の LAN には手元のマシンから
+HTTP が届かない（SSH しか通らない）ので使わない。
+
+**(c) MCP サーバーを登録する**。`MDSCOPE_VIEW_URL` に**ブラウザから見た** URL を入れると、
 `view_structure` の結果に `url` が付く:
 
 ```bash
 codex mcp add mdscope \
   --env MDSCOPE_ALLOWED_ROOTS="$HOME:/data3/kawai" \
-  --env MDSCOPE_VIEW_URL="http://192.168.1.102:8765" \
+  --env MDSCOPE_VIEW_URL="http://localhost:8765" \
   -- "$HOME/.conda/envs/mdscope/bin/mdscope-mcp"
 codex mcp list    # mdscope が出れば OK
 ```

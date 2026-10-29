@@ -19,13 +19,13 @@ Day 1 の実装が終わり、**ユーザー確認 A 待ち**:
 
 - Claude Code（登録済み）: 「`example/alanine-dipeptide-nowater.pdb` を見せて」で Artifact が開いて回せるか。
   スマホのリモートコントロールからも見えるか。
-- Codex（登録済み、`--serve --host 0.0.0.0` を起動中）: 同じ依頼で `url` が返り、ブラウザで開けるか。
+- Codex（登録済み、`--serve` を localhost で起動中、手元から SSH 転送）: 同じ依頼で `url` が返り、ブラウザで開けるか。
 - 確認用に生成済み: `~/.cache/mdscope/` の `view_*.html`（ALA2 と `MDAnalysisTests` の adk）
 
 ## 最大の問題
 
 - **表示の実機確認がまだ**。3Dmol.js の cartoon / ssPyMOL 配色 / 二次構造なし時の sticks 退避は、ブラウザで一度も見ていない。
-- Codex 経路は `--serve` の常駐が前提。落ちていると `url` は返るが開けない。
+- Codex 経路は `--serve` の常駐と SSH ポート転送が前提。どちらかが落ちていると `url` は返るが開けない。
 
 ## 次にやること
 

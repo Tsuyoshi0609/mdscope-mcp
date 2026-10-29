@@ -17,9 +17,9 @@ Artifact を使わない（使えない）場合は、そのパスの HTML を�
 ### Codex から
 
 `mdscope-mcp --serve` を立てて `MDSCOPE_VIEW_URL` を設定しておくと（[setup.md](setup.md) §4）、
-結果の `artifacts[0].url`（例 `http://192.168.1.102:8765/view_<hash>.html`）が返るので、それをブラウザで開く。
-Codex に頼むときは「見せて。URL を教えて」と言えばよい。
-`http://192.168.1.102:8765/` を開けば生成済み HTML の一覧も見える。
+結果の `artifacts[0].url`（例 `http://localhost:8765/view_<hash>.html`）が返るので、SSH ポート転送を張った
+手元のブラウザで開く。Codex に頼むときは「見せて。URL を教えて」と言えばよい。
+`http://localhost:8765/` を開けば生成済み HTML の一覧も見える。
 
 ## ツール
 
