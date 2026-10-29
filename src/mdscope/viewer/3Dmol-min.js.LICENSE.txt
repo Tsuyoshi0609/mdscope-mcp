@@ -1,0 +1,5 @@
+3Dmol-min.js is 3Dmol.js v2.5.5 (https://3dmol.csb.pitt.edu/), unmodified,
+downloaded from https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.5.5/3Dmol-min.js
+
+Copyright (c) David Koes and contributors. Licensed under the BSD-3-Clause license.
+See https://github.com/3dmol/3Dmol.js/blob/master/LICENSE
