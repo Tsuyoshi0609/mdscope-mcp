@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import logging
 import sys
 
@@ -10,12 +11,14 @@ from fastmcp import FastMCP
 from mdscope import __version__, loader, payload, registry
 from mdscope.config import allowed_roots, cache_dir
 from mdscope.html import write_html
+from mdscope.serve import serve, view_url
 
 mcp = FastMCP("mdscope")
 
 SHOW_HINT = (
     "To show the viewer to the user: in Claude Code, publish artifacts[0].path with the Artifact "
-    "tool (it is a self-contained HTML page); otherwise tell the user to open that file in a browser."
+    "tool (it is a self-contained HTML page). Otherwise give the user artifacts[0].url if present "
+    "(served by `mdscope-mcp --serve`), else the file path to open in a browser."
 )
 
 
@@ -76,17 +79,24 @@ def view_structure(
     html_path = write_html(data)
     summary = {k: v for k, v in data.items() if k not in ("pdb", "highlight_serials", "notes")}
     summary["html_size_mb"] = round(html_path.stat().st_size / 1e6, 2)
+    artifact = {"kind": "html", "path": str(html_path), "caption": f"{data['title']}: {selection}, frame {frame}"}
+    if url := view_url(html_path.name):
+        artifact["url"] = url
     return {
         "summary": summary,
-        "artifacts": [
-            {"kind": "html", "path": str(html_path), "caption": f"{data['title']}: {selection}, frame {frame}"}
-        ],
+        "artifacts": [artifact],
         "warnings": data["notes"] + system.warnings,
         "how_to_show": SHOW_HINT,
     }
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser(prog="mdscope-mcp", description="MCP server for viewing MD structures")
+    ap.add_argument("--check", action="store_true", help="print self-check info to stderr and exit")
+    ap.add_argument("--serve", action="store_true", help="serve the cache dir over HTTP instead of running MCP")
+    ap.add_argument("--host", default="127.0.0.1", help="bind address for --serve (default 127.0.0.1)")
+    ap.add_argument("--port", type=int, default=8765, help="port for --serve (default 8765)")
+    args = ap.parse_args()
     # stdout is reserved for MCP; everything else goes to stderr and a log file
     logging.basicConfig(
         level=logging.INFO,
@@ -96,8 +106,11 @@ def main() -> None:
             logging.FileHandler(cache_dir() / "server.log"),
         ],
     )
-    if "--check" in sys.argv:
+    if args.check:
         print(info(), file=sys.stderr)
+        return
+    if args.serve:
+        serve(cache_dir(), args.host, args.port)
         return
     mcp.run()
 
