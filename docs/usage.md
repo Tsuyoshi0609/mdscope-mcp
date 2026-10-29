@@ -14,6 +14,12 @@ Claude Code で頼むだけでよい:
 
 Artifact を使わない（使えない）場合は、そのパスの HTML をブラウザで開けば同じものが見える。
 
+### ChatGPT デスクトップ / Claude Desktop から（MCP Apps）
+
+MCP Apps に対応したホストでは、`view_structure` の結果が **会話内にそのまま 3D ビューアとして描画**される
+（サーバーが `ui://mdscope/viewer/v1.html` を UI リソースとして公開し、ツールに関連付けている）。
+ビューアの右上 ⤢ で全画面にできる。描画されない場合は Codex と同じく `url` / HTML パスで開く。
+
 ### Codex から
 
 `mdscope-mcp --serve` を立てて `MDSCOPE_VIEW_URL` を設定しておくと（[setup.md](setup.md) §4）、
@@ -28,6 +34,7 @@ Artifact を使わない（使えない）場合は、そのパスの HTML を�
 | `load_system` | `topology`, `trajectory`（任意、複数可） | `system_id` と組成（chain・残基範囲・配列、リガンド候補、水・イオン数、フレーム数） |
 | `describe_system` | `system_id` | 同上（選択文字列を書くための情報源） |
 | `view_structure` | `system_id` か `topology`（+ `trajectory`）, `selection="protein"`, `frame=0`, `style`, `color`, `highlight`, `title` | HTML のパス（`artifacts[0].path`）と配信 URL（`url`、設定時のみ）、表示内容の要約、`warnings` |
+| `get_view_payload` | `view_id` | ビューア用データ（PDB 文字列と表示設定）。**ビューアが呼ぶ**もので、人が呼ぶ必要はない |
 | `mdscope_info` | — | バージョン、許可ルート、キャッシュ先、読込済みの系 |
 
 ### `view_structure` の引数

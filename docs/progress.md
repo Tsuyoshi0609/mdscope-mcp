@@ -17,14 +17,14 @@ floyd 上の構造ファイル・MD 軌道を、Claude Code / Codex のチャッ
 
 Day 1 の実装が終わり、**ユーザー確認 A 待ち**:
 
-- Claude Code（登録済み）: 「`example/alanine-dipeptide-nowater.pdb` を見せて」で Artifact が開いて回せるか。
-  スマホのリモートコントロールからも見えるか。
-- Codex（登録済み、`--serve` を localhost で起動中、手元から SSH 転送）: 同じ依頼で `url` が返り、ブラウザで開けるか。
-- 確認用に生成済み: `~/.cache/mdscope/` の `view_*.html`（ALA2 と `MDAnalysisTests` の adk）
+- 済: Codex → `url` → Safari で表示できた（確認 A の Codex 経路）。
+- 待ち: Claude Code（登録済み）で「`example/alanine-dipeptide-nowater.pdb` を見せて」→ Artifact が開いて回せるか。
+- 待ち: **ChatGPT デスクトップで会話内に描画されるか**（MCP Apps 対応を実装済み、[setup.md](setup.md) §5）。
+  `ui://mdscope/viewer/v1.html` の postMessage ハンドシェイクと `window.openai` 経路はブラウザで未確認。
 
 ## 最大の問題
 
-- **表示の実機確認がまだ**。3Dmol.js の cartoon / ssPyMOL 配色 / 二次構造なし時の sticks 退避は、ブラウザで一度も見ていない。
+- ChatGPT デスクトップ（Mac）から floyd のサーバーへは SSH stdio で繋ぐしかなく、その構成を実機で通していない。
 - Codex 経路は `--serve` の常駐と SSH ポート転送が前提。どちらかが落ちていると `url` は返るが開けない。
 
 ## 次にやること

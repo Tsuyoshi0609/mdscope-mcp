@@ -87,7 +87,22 @@ codex mcp list    # mdscope が出れば OK
 
 （`~/.codex/config.toml` に `[mcp_servers.mdscope]` が書かれる。）
 
-## 5. サンプルデータで確認する
+## 5. ChatGPT デスクトップ（Mac）から使う
+
+ChatGPT デスクトップは手元の Mac で動くので、MCP サーバーは **SSH 越しの stdio** で floyd 上のものを呼ぶ。
+Mac 側の Codex 設定（`~/.codex/config.toml`、ChatGPT デスクトップのローカルスレッドが使う）に登録する:
+
+```bash
+# Mac で実行。floyd に鍵認証で入れること（ssh floyd true が何も聞かずに通る）
+codex mcp add mdscope -- ssh -T -q -o BatchMode=yes floyd \
+  env MDSCOPE_ALLOWED_ROOTS=/home/kawai:/data3/kawai /home/kawai/.conda/envs/mdscope/bin/mdscope-mcp
+```
+
+`.bashrc` 等が stdout に何か出すと JSON-RPC が壊れるので、floyd 側のログイン時出力は stderr か
+非対話時に抑止しておく。ChatGPT デスクトップが MCP Apps を描画できれば会話内に 3D ビューアが出る
+（[usage.md](usage.md)）。
+
+## 6. サンプルデータで確認する
 
 [example/README.md](../example/README.md) の手順で ALA2 の軌道を `example/` に置き、
 Claude Code で「`example/alanine-dipeptide-nowater.pdb` を見せて」と頼む。
