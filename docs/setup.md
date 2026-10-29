@@ -64,13 +64,18 @@ conda activate mdscope
 mdscope-mcp --serve     # ~/.cache/mdscope を http://127.0.0.1:8765/ で配信
 ```
 
-**(b) 手元のマシンから SSH ポート転送を張る**（張っている間だけ見える）:
+**(b) 手元のマシンから SSH ポート転送を張る**（張っている間だけ見える）。
+手元の `~/.ssh/config` の floyd 用エントリに 1 行足しておくと、ssh で入っている間は常に有効:
 
-```bash
-ssh -N -L 8765:127.0.0.1:8765 kawai@floyd
+```
+Host floyd-remote
+  ...（既存の設定）
+  LocalForward 18765 127.0.0.1:8765
 ```
 
-ブラウザで `http://localhost:8765/` を開くと生成済み HTML の一覧が出る。
+手元側のポートを **18765** にしているのは、Mac では 8765 を別のアプリが使っていることがあるため
+（[help.md](help.md)）。バックグラウンドで張るだけなら `ssh -fN floyd-remote`。
+ブラウザで `http://localhost:18765/` を開くと生成済み HTML の一覧が出る。
 `--serve --host 0.0.0.0` で LAN に直接公開することもできるが、floyd の LAN には手元のマシンから
 HTTP が届かない（SSH しか通らない）ので使わない。
 
@@ -80,7 +85,7 @@ HTTP が届かない（SSH しか通らない）ので使わない。
 ```bash
 codex mcp add mdscope \
   --env MDSCOPE_ALLOWED_ROOTS="$HOME:/data3/kawai" \
-  --env MDSCOPE_VIEW_URL="http://localhost:8765" \
+  --env MDSCOPE_VIEW_URL="http://localhost:18765" \
   -- "$HOME/.conda/envs/mdscope/bin/mdscope-mcp"
 codex mcp list    # mdscope が出れば OK
 ```
@@ -93,14 +98,19 @@ ChatGPT デスクトップは手元の Mac で動くので、MCP サーバーは
 Mac 側の Codex 設定（`~/.codex/config.toml`、ChatGPT デスクトップのローカルスレッドが使う）に登録する:
 
 ```bash
-# Mac で実行。floyd に鍵認証で入れること（ssh floyd true が何も聞かずに通る）
-codex mcp add mdscope -- ssh -T -q -o BatchMode=yes floyd \
-  env MDSCOPE_ALLOWED_ROOTS=/home/kawai:/data3/kawai /home/kawai/.conda/envs/mdscope/bin/mdscope-mcp
+# Mac で実行。floyd に鍵認証で入れること（ssh floyd-remote true が何も聞かずに通る）
+codex mcp add mdscope -- ssh -T -q -o BatchMode=yes floyd-remote \
+  env MDSCOPE_ALLOWED_ROOTS=/home/kawai:/data3/kawai MDSCOPE_VIEW_URL=http://localhost:18765 \
+  /home/kawai/.conda/envs/mdscope/bin/mdscope-mcp
 ```
 
 `.bashrc` 等が stdout に何か出すと JSON-RPC が壊れるので、floyd 側のログイン時出力は stderr か
 非対話時に抑止しておく。ChatGPT デスクトップが MCP Apps を描画できれば会話内に 3D ビューアが出る
 （[usage.md](usage.md)）。
+
+頼むときは **「mdscope の view_structure で `/data3/...pdb` を見せて」のようにツール名を添える**。
+パスは floyd 上のものなので、添えないとモデルが Mac 側のファイルを探して「見つからない」と言うことがある。
+floyd 上のファイルを探させるには `list_files` が使える。
 
 ## 6. サンプルデータで確認する
 

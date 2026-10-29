@@ -23,14 +23,15 @@ MCP Apps に対応したホストでは、`view_structure` の結果が **会話
 ### Codex から
 
 `mdscope-mcp --serve` を立てて `MDSCOPE_VIEW_URL` を設定しておくと（[setup.md](setup.md) §4）、
-結果の `artifacts[0].url`（例 `http://localhost:8765/view_<hash>.html`）が返るので、SSH ポート転送を張った
+結果の `artifacts[0].url`（例 `http://localhost:18765/view_<hash>.html`）が返るので、SSH ポート転送を張った
 手元のブラウザで開く。Codex に頼むときは「見せて。URL を教えて」と言えばよい。
-`http://localhost:8765/` を開けば生成済み HTML の一覧も見える。
+`http://localhost:18765/` を開けば生成済み HTML の一覧も見える。
 
 ## ツール
 
 | ツール | 主な引数 | 返すもの |
 |---|---|---|
+| `list_files` | `path`, `pattern="*"` | サーバー側（floyd）のファイル一覧。パスの確認用 |
 | `load_system` | `topology`, `trajectory`（任意、複数可） | `system_id` と組成（chain・残基範囲・配列、リガンド候補、水・イオン数、フレーム数） |
 | `describe_system` | `system_id` | 同上（選択文字列を書くための情報源） |
 | `view_structure` | `system_id` か `topology`（+ `trajectory`）, `selection="protein"`, `frame=0`, `style`, `color`, `highlight`, `title` | HTML のパス（`artifacts[0].path`）と配信 URL（`url`、設定時のみ）、表示内容の要約、`warnings` |
