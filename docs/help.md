@@ -13,7 +13,12 @@ Mac 側で 8765 番を別のアプリ（Claude 系のローカルサービス）
 `http://localhost:18765` にする。転送が本当に floyd に届いているかは、floyd 側の `--serve` の
 ログ（stderr）にアクセス行が出るかで確かめる。
 
-## ChatGPT デスクトップで「ファイルが見つからない」と言われる
+## ChatGPT デスクトップで「ファイルが見つからない」と言われる／表示まで数分かかる
 
-パスは floyd 上のものだが、モデルが Mac 側（Codex の作業ディレクトリ）を探している。
-「mdscope の `view_structure` で …… を見せて」とツール名を添える。`list_files` で floyd 側を探させてもよい。
+パスは floyd 上のものだが、モデルが Mac 側（Codex の作業ディレクトリ）を探したり、
+「mdscope のツールが公開されていない」と言ってプラグイン一覧やブラウザを探し回ることがある
+（初回は約 3 分かかった）。サーバー側の起動は約 1.6 秒で、遅さの原因ではない。
+
+- 「mdscope の `view_structure` で …… を見せて」とツール名を添える。`list_files` で floyd 側を探させてもよい
+- Mac の `~/.codex/config.toml` の `[mcp_servers.mdscope]` に `startup_timeout_sec = 60` を足しておくと、
+  SSH（Cloudflare 経由）の接続が遅い日にツール一覧の取得が時間切れになるのを防げる

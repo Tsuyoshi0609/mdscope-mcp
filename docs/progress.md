@@ -17,20 +17,23 @@ floyd 上の構造ファイル・MD 軌道を、Claude Code / Codex のチャッ
 
 Day 1 の実装が終わり、**ユーザー確認 A 待ち**:
 
-- 済: Codex → `url` → Safari で表示できた（確認 A の Codex 経路）。
-- 待ち: Claude Code（登録済み）で「`example/alanine-dipeptide-nowater.pdb` を見せて」→ Artifact が開いて回せるか。
-- 待ち: **ChatGPT デスクトップで会話内に描画されるか**（MCP Apps 対応を実装済み、[setup.md](setup.md) §5）。
-  `ui://mdscope/viewer/v1.html` の postMessage ハンドシェイクと `window.openai` 経路はブラウザで未確認。
+確認 A の結果:
+
+- 済: Codex（floyd）→ `url` → SSH 転送した Mac の Safari で表示できた。
+- 済: ChatGPT デスクトップ（Mac、SSH stdio で floyd のサーバー）→ **会話内に 3D ビューアが描画された**。
+  ただしモデルがツールを見つけるまで迷い、表示まで約 3 分かかった（[help.md](help.md)）。
+- 待ち: Claude Code で「`example/alanine-dipeptide-nowater.pdb` を見せて」→ Artifact が開いて回せるか。
 
 ## 最大の問題
 
-- ChatGPT デスクトップ（Mac）から floyd のサーバーへは SSH stdio で繋ぐしかなく、その構成を実機で通していない。
+- ChatGPT デスクトップでの初回表示が遅い（原因はモデル側の探索。サーバー起動は約 1.6 秒）。
 - Codex 経路は `--serve` の常駐と SSH ポート転送が前提。どちらかが落ちていると `url` は返るが開けない。
 
 ## 次にやること
 
-1. 確認 A が通ったら Day 2: 軌道対応（選択・間引き・PBC 補正・`int16` 座標、ビューアのスライダーと再生）。
-   テストデータは `MDAnalysisTests` の GRO+XTC と PRMTOP+NC、実データは `example/` の ALA2 250 ns。
-2. 通らなければ、ブラウザのコンソールのエラーをそのまま貼ってもらい `template.html` を直す。
+1. Day 2: 軌道対応（選択・間引き・PBC 補正・`int16` 座標、ビューアのスライダーと再生）。
+   単体 HTML と MCP App の両方で動かす。テストデータは `MDAnalysisTests` の GRO+XTC と PRMTOP+NC、
+   実データは `example/` の ALA2 250 ns。
+2. Claude Code 経路の確認 A が通らなければ、ブラウザのコンソールのエラーを貼ってもらい `viewer/` を直す。
 
 細かい日程は `docs/local/IMPLEMENTATION_PLAN.md`。
