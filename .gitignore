@@ -1,0 +1,29 @@
+# example data: keep only example/README.md (see .claude/rules/git-workflow.md)
+example/*
+!example/README.md
+
+# local notes and backups
+docs/local/
+backup/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# generated viewers / cache
+*.html.gz
+.cache/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Claude Code local settings
+.claude/settings.local.json
