@@ -14,13 +14,20 @@ Claude Code で頼むだけでよい:
 
 Artifact を使わない（使えない）場合は、そのパスの HTML をブラウザで開けば同じものが見える。
 
+### Codex から
+
+`mdscope-mcp --serve` を立てて `MDSCOPE_VIEW_URL` を設定しておくと（[setup.md](setup.md) §4）、
+結果の `artifacts[0].url`（例 `http://192.168.1.102:8765/view_<hash>.html`）が返るので、それをブラウザで開く。
+Codex に頼むときは「見せて。URL を教えて」と言えばよい。
+`http://192.168.1.102:8765/` を開けば生成済み HTML の一覧も見える。
+
 ## ツール
 
 | ツール | 主な引数 | 返すもの |
 |---|---|---|
 | `load_system` | `topology`, `trajectory`（任意、複数可） | `system_id` と組成（chain・残基範囲・配列、リガンド候補、水・イオン数、フレーム数） |
 | `describe_system` | `system_id` | 同上（選択文字列を書くための情報源） |
-| `view_structure` | `system_id` か `topology`（+ `trajectory`）, `selection="protein"`, `frame=0`, `style`, `color`, `highlight`, `title` | HTML のパス（`artifacts[0].path`）、表示内容の要約、`warnings` |
+| `view_structure` | `system_id` か `topology`（+ `trajectory`）, `selection="protein"`, `frame=0`, `style`, `color`, `highlight`, `title` | HTML のパス（`artifacts[0].path`）と配信 URL（`url`、設定時のみ）、表示内容の要約、`warnings` |
 | `mdscope_info` | — | バージョン、許可ルート、キャッシュ先、読込済みの系 |
 
 ### `view_structure` の引数

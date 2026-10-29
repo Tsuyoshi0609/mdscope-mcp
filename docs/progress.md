@@ -17,14 +17,15 @@ floyd 上の構造ファイル・MD 軌道を、Claude Code / Codex のチャッ
 
 Day 1 の実装が終わり、**ユーザー確認 A 待ち**:
 
-- Claude Code に `mdscope` を登録し（[setup.md](setup.md) §3）、「`example/alanine-dipeptide-nowater.pdb` を見せて」で
-  Artifact が開いて回せるか。スマホのリモートコントロールからも見えるか。
-- 確認用に生成済み: `~/.cache/mdscope/` の `view_*.html`（ALA2、22 原子）
+- Claude Code（登録済み）: 「`example/alanine-dipeptide-nowater.pdb` を見せて」で Artifact が開いて回せるか。
+  スマホのリモートコントロールからも見えるか。
+- Codex（登録済み、`--serve --host 0.0.0.0` を起動中）: 同じ依頼で `url` が返り、ブラウザで開けるか。
+- 確認用に生成済み: `~/.cache/mdscope/` の `view_*.html`（ALA2 と `MDAnalysisTests` の adk）
 
 ## 最大の問題
 
 - **表示の実機確認がまだ**。3Dmol.js の cartoon / ssPyMOL 配色 / 二次構造なし時の sticks 退避は、ブラウザで一度も見ていない。
-- Codex での見せ方（Artifact に相当する仕組みが無い）が未定。
+- Codex 経路は `--serve` の常駐が前提。落ちていると `url` は返るが開けない。
 
 ## 次にやること
 
