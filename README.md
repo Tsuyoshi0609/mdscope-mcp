@@ -7,15 +7,15 @@ mdscope-mcp は、タンパク質の構造ファイルと MD 軌道を Claude Co
 3Dmol.js を同梱した自己完結の HTML を書き出します。Claude Code はそれを Artifact として
 公開するので、ブラウザやスマホ（リモートコントロール）からそのまま回せます。
 
-状態: 開発中（v0.0.1）。まだ動きません。
+状態: 開発中（v0.0.1）。
 
-## できること（予定）
+## できること
 
 | 優先 | 機能 | 状態 |
 |---|---|---|
-| 1 | 構造ファイル（`.pdb` / `.cif` / `.gro`）を cartoon で表示 | 未 |
-| 2 | MD 軌道（GROMACS / AMBER / DCD）をフレーム再生 | 未 |
-| 3 | 表現の変更（sticks / spheres / surface、配色、ハイライト） | 未 |
+| 1 | 構造ファイル（`.pdb` / `.gro` / `.prmtop` …）を cartoon で表示 | 動作確認済み（Claude Code / Codex / ChatGPT デスクトップ） |
+| 2 | MD 軌道（GROMACS / AMBER / DCD）をフレーム再生 | 実装済み（実機確認中） |
+| 3 | 表現の変更（sticks / spheres / surface、配色、ハイライト） | 一部（sticks / spheres / lines、4 配色、ハイライト） |
 | 4 | 密度マップ（`.mrc` / `.map`）の等値面 | 未 |
 
 解析（RMSD など）やシミュレーションの実行は対象外です。
