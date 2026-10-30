@@ -18,16 +18,16 @@ floyd 上の構造ファイル・MD 軌道を、Claude Code / Codex のチャッ
 目標 1 は 3 経路（floyd の Claude Code → Artifact、floyd の Codex → URL、ChatGPT デスクトップ → 会話内）
 すべてで確認済み。本線は前 2 つ（floyd 上で起動した Claude Code / Codex をデスクトップアプリで確認する）。
 
-Day 2（軌道）の実装が終わり、**ユーザー確認 B 待ち**:
+Day 2（軌道）の実装が終わり、**ユーザー確認 B の途中**:
 
-- Claude Code（`ssh floyd-remote` → `claude --remote-control`）で
+- 済: Claude Code（`ssh floyd-remote` → `claude --remote-control`）で ALA2 の軌道を再生できた。
+- 済: Codex デスクトップが `view_structure` の結果を会話内に MCP App として描画することを確認。
+- 待ち: Codex を立ち上げ直してから
   「`example/alanine-dipeptide-nowater.pdb` と `example/alanine-dipeptide-0-250ns-nowater.xtc` を再生して見せて」
-  → Artifact のビューアに ▶ とスライダーが出て、再生できる。
-- Codex（floyd）で同じ依頼 → `url` を Safari で開いて同上。
-- 判定: 千切れ・飛びが無い、表示まで 1 分以内。ALA2（22 原子 × 50 フレーム）は HTML 生成 0.3 秒。
+  → 会話内（または `url` を Safari で開いて）▶ とスライダーで再生できる。
+  判定: 千切れ・飛びが無い、表示まで 1 分以内。
 
-自動テスト 22 件（`pytest`）は通っている。ブラウザでの描画は floyd 上では確認できない
-（ヘッドレス Firefox に WebGL が無い）ので、ユーザー確認が実機での初回になる。
+自動テスト 22 件（`pytest`）は通っている。
 
 ## 最大の問題
 
