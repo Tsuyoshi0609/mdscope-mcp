@@ -5,7 +5,7 @@ const [, , coreJs, payloadJson] = process.argv;
 const P = JSON.parse(fs.readFileSync(payloadJson, "utf8"));
 
 // --- minimal DOM --------------------------------------------------------------------
-const calls = { setFrame: [], setStyle: 0, render: 0, setCoordinatesLen: null, errors: [] };
+const calls = { setFrame: [], setStyle: 0, render: 0, setCoordinatesLen: null, errors: [], keepH: null };
 function el(id) {
   const classes = new Set();
   return {
@@ -31,12 +31,19 @@ global.document = {
 };
 global.$3Dmol = {
   createViewer() {
+    let nAtoms = 0;
     const model = {
       setCoordinates(arr, fmt) { calls.setCoordinatesLen = arr.length; calls.fmt = fmt; return []; },
-      selectedAtoms() { return [1]; },
+      // {} -> all atoms (count like 3Dmol would: drop H unless keepH); {ss:...} -> pretend some helix
+      selectedAtoms(sel) { return Object.keys(sel).length ? [1] : new Array(nAtoms).fill(1); },
     };
     return {
-      addModel() { return model; },
+      addModel(pdb, fmt, opts) {
+        calls.keepH = !!(opts && opts.keepH);
+        const lines = pdb.split("\n").filter((l) => l.startsWith("ATOM") || l.startsWith("HETATM"));
+        nAtoms = calls.keepH ? lines.length : lines.filter((l) => l.slice(76, 78).trim() !== "H").length;
+        return model;
+      },
       setStyle() { calls.setStyle++; }, addStyle() {}, render() { calls.render++; }, zoomTo() {},
       setFrame(i) { calls.setFrame.push(i); return Promise.resolve(); },
       resize() {}, setBackgroundColor() {},

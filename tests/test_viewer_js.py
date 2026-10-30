@@ -36,6 +36,15 @@ def test_trajectory_controls(tmp_path):
     assert out["playText"] == "▶" and len(out["calls"]["setFrame"]) >= 5  # 2 explicit + ticks at 30 fps
 
 
+def test_hydrogens_are_kept_so_frames_line_up(tmp_path):
+    # ALA2-like case: topology with hydrogens; 3Dmol would drop them without keepH
+    s = loader.load(D.PRMncdf, D.TRJncdf)
+    p = payload.build_trajectory_payload(s, "protein", max_frames=3)
+    assert s.universe.select_atoms("protein and name H*").n_atoms > 0
+    out = run_harness(p, tmp_path)
+    assert out["calls"]["keepH"] is True and out["ctrlOn"] is True
+
+
 def test_single_frame_has_no_controls(tmp_path):
     s = loader.load(D.PDB_small)
     out = run_harness(payload.build_payload(s, "protein and name CA"), tmp_path)

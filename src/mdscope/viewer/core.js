@@ -58,7 +58,12 @@ window.MdscopeViewer = (function () {
       viewer = $3Dmol.createViewer(el, { backgroundColor: dark ? "#121212" : "#ffffff", antialias: true });
     } catch (e) { viewer = null; }
     if (!viewer) throw new Error("WebGL is not available in this browser/window, so the structure cannot be drawn");
-    const model = viewer.addModel(P.pdb, "pdb");
+    // keepH: 3Dmol drops hydrogens by default, which would misalign the trajectory coordinates
+    const model = viewer.addModel(P.pdb, "pdb", { keepH: true });
+    const nModel = model.selectedAtoms({}).length;
+    if (nModel !== P.n_atoms) {
+      throw new Error(`viewer parsed ${nModel} atoms but the payload has ${P.n_atoms}; coordinates would be misassigned`);
+    }
     if (nFrames > 1) model.setCoordinates(decodeCoords(P.coords_b64, P.coord_scale), "array");
 
     const styleSel = document.getElementById("style");
