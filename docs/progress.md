@@ -23,18 +23,18 @@ Day 3（公開準備）を実施し、**v0.1.0 として push できる状態**�
 
 - ブラウザ側の再生速度（ATLAS 1cvr_A、3363 重原子 × 50 フレーム、2.2 MB）が実用的か。
   サーバー側の実測は [mechanism.md](mechanism.md)。
-- `docs/setup.md` を別の端末で追試していない（wheel に `viewer/` と LICENSE が入ることだけ確認）。
+- `docs/setup.md` の 4 つの使い方（A〜D）を、環境を消してから追試する。手順は `docs/local/todo.md`
+  （push 後に行う。手元の PC での C・D は未確認）。
 
 ## 最大の問題
 
 - 目標 2 の判定「10 万原子・1 万フレーム」級はサーバー側で未計測（floyd に該当データが無い）。
   `max_payload_mb=8` でフレーム数を自動で減らすので HTML は出るが、ブラウザ描画の重さは不明。
 - ChatGPT デスクトップでの初回表示が遅い（原因はモデル側の探索。サーバー起動は約 1.6 秒）。
-- Codex 経路の `url` は `--serve` の常駐と SSH ポート転送が前提。会話内描画が効く Codex デスクトップでは不要。
 
 ## 次にやること
 
-1. ユーザーの指示で `git push origin main`（GitHub 公開 v0.1.0）。
+1. ユーザーの指示で `git push origin main`（GitHub 公開 v0.1.0）。その後 `docs/local/todo.md` の追試。
 2. Day 4（目標 3）: `surface` 表現、部分選択ごとの表現の重ね合わせ（例: リガンド周り 5 Å を sticks）、
    ラベル。ビューア内のメニューも同じ項目に揃える。
 3. Day 6（目標 4）: `view_density`（`mrcfile` → 間引き → 3Dmol の等値面）。

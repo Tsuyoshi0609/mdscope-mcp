@@ -1,121 +1,113 @@
 # セットアップ
 
-サーバーは **データがあるマシン**（Claude Code を動かすマシン）に入れる。
+## 0. 構成を決める
 
-## 1. conda 環境を作る
+mdscope-mcp は **チャットのセッションを起動するマシン**に入れる。そのマシン上の軌道を見る。
+デスクトップアプリ（Claude / ChatGPT）は進捗を見て操作するだけで、**デスクトップアプリ側に入れるものは無い**。
+
+| 使い方 | セッションを起動するマシンとコマンド | 見るアプリ | 3D ビューアの出方 |
+|---|---|---|---|
+| **A** | リモート PC で `claude --remote-control <session-name>` | Claude デスクトップ | Artifact のリンク |
+| **B** | リモート PC で `codex` | ChatGPT デスクトップ | 会話内に描画（MCP Apps） |
+| **C** | 手元の PC で `claude --remote-control <session-name>` | Claude デスクトップ | Artifact のリンク |
+| **D** | 手元の PC で `codex` | ChatGPT デスクトップ | 会話内に描画（MCP Apps） |
+
+以下、**「サーバー PC」= セッションを起動するマシン**（A・B ならリモート PC、C・D なら手元の PC）。
+§1 はサーバー PC で 1 回、§2 は Claude Code を使うなら（A・C）、§3 は Codex を使うなら（B・D）。
+コマンドはすべて **サーバー PC のターミナル**で打つ。デスクトップアプリ側の操作は §4。
+
+## 1. サーバー PC に入れる
+
+前提: conda か mamba（[Miniforge](https://github.com/conda-forge/miniforge) で可）、git、
+Claude Code（`claude`）または Codex（`codex`）が入っていること。
 
 ```bash
 git clone https://github.com/Tsuyoshi0609/mdscope-mcp.git
 cd mdscope-mcp
 mamba env create -f environment.yml     # conda でも可。環境名は mdscope
 conda activate mdscope
-mdscope-mcp --check                     # バージョン・許可ルート・キャッシュ先が stderr に出れば OK
+mdscope-mcp --check                     # version, allowed_roots, cache_dir が表示されれば OK
+which mdscope-mcp                       # ← この絶対パスを §2 / §3 で使う
 ```
 
 `environment.yml` には MDAnalysis、netCDF4（AMBER 軌道）、mrcfile（密度マップ）、fastmcp と、
 このリポジトリ自身（`pip install -e .`）が含まれる。
 
-PNG スナップショットも欲しい場合だけ、PyMOL を追加する（無くても表示はできる）:
-
-```bash
-mamba install -n mdscope -c conda-forge pymol-open-source
-```
-
-## 2. 環境変数
+### 環境変数
 
 | 変数 | 既定 | 意味 |
 |---|---|---|
 | `MDSCOPE_ALLOWED_ROOTS` | `$HOME` | 読んでよいディレクトリ。`:` 区切り。**ここ以外のパスは拒否される** |
-| `MDSCOPE_CACHE_DIR` | `~/.cache/mdscope` | 生成した HTML / PNG とログの置き場 |
-| `MDSCOPE_VIEW_URL` | なし | ブラウザから見た `mdscope-mcp --serve` の URL（例 `http://localhost:8765`）。設定すると結果に `url` が付く（Codex 用、§4） |
+| `MDSCOPE_CACHE_DIR` | `~/.cache/mdscope` | 生成した HTML とログの置き場 |
 
-データが `$HOME` の外にあるなら必ず設定する（例: `/data3/kawai`）。
+軌道が `$HOME` の外にあるなら `MDSCOPE_ALLOWED_ROOTS` に追加する（例: `$HOME:/data3/kawai`）。
+§2 / §3 の `-e` / `--env` で渡す。
 
-## 3. Claude Code に登録する
-
-```bash
-claude mcp add --scope user mdscope \
-  -e MDSCOPE_ALLOWED_ROOTS="$HOME:/data3/kawai" \
-  -- conda run -n mdscope --no-capture-output mdscope-mcp
-```
-
-`claude mcp list` で `mdscope` が `connected` になれば完了。
-
-`conda run` が遅い・不安定な場合は、環境の Python を直接指すラッパーを使う:
-
-```bash
-cat > ~/.local/bin/mdscope-mcp <<'EOF'
-#!/bin/sh
-exec "$HOME/.conda/envs/mdscope/bin/mdscope-mcp" "$@"
-EOF
-chmod +x ~/.local/bin/mdscope-mcp
-claude mcp add --scope user mdscope -e MDSCOPE_ALLOWED_ROOTS="$HOME:/data3/kawai" -- ~/.local/bin/mdscope-mcp
-```
-
-## 4. Codex に登録する
-
-Codex には Artifact に相当する表示手段が無いので、生成した HTML を **HTTP で配信**して
-ブラウザで開く。2 段階。
-
-**(a) 配信サーバーを立てておく**（floyd 上、tmux などで常駐させる）:
+## 2. Claude Code に登録する（A・C）
 
 ```bash
 conda activate mdscope
-mdscope-mcp --serve     # ~/.cache/mdscope を http://127.0.0.1:8765/ で配信
+claude mcp add --scope user mdscope \
+  -e MDSCOPE_ALLOWED_ROOTS="$HOME:/data3/kawai" \
+  -- "$(which mdscope-mcp)"
+claude mcp list        # mdscope: ... - ✔ Connected と出れば OK
 ```
 
-**(b) 手元のマシンから SSH ポート転送を張る**（張っている間だけ見える）。
-手元の `~/.ssh/config` の floyd 用エントリに 1 行足しておくと、ssh で入っている間は常に有効:
+`--scope user` なので、どのディレクトリで `claude` を起動しても使える。
+外す: `claude mcp remove --scope user mdscope`。
 
-```
-Host floyd-remote
-  ...（既存の設定）
-  LocalForward 18765 127.0.0.1:8765
-```
-
-手元側のポートを **18765** にしているのは、Mac では 8765 を別のアプリが使っていることがあるため
-（[help.md](help.md)）。バックグラウンドで張るだけなら `ssh -fN floyd-remote`。
-ブラウザで `http://localhost:18765/` を開くと生成済み HTML の一覧が出る。
-`--serve --host 0.0.0.0` で LAN に直接公開することもできるが、floyd の LAN には手元のマシンから
-HTTP が届かない（SSH しか通らない）ので使わない。
-
-**(c) MCP サーバーを登録する**。`MDSCOPE_VIEW_URL` に**ブラウザから見た** URL を入れると、
-`view_structure` の結果に `url` が付く:
+## 3. Codex に登録する（B・D）
 
 ```bash
+conda activate mdscope
 codex mcp add mdscope \
   --env MDSCOPE_ALLOWED_ROOTS="$HOME:/data3/kawai" \
-  --env MDSCOPE_VIEW_URL="http://localhost:18765" \
-  -- "$HOME/.conda/envs/mdscope/bin/mdscope-mcp"
-codex mcp list    # mdscope が出れば OK
+  -- "$(which mdscope-mcp)"
+codex mcp list         # mdscope が enabled で出れば OK
 ```
 
-（`~/.codex/config.toml` に `[mcp_servers.mdscope]` が書かれる。）
+`~/.codex/config.toml` に `[mcp_servers.mdscope]` が書かれる。外す: `codex mcp remove mdscope`。
 
-## 5. ChatGPT デスクトップ（Mac）から使う
+## 4. 使う
 
-ChatGPT デスクトップは手元の Mac で動くので、MCP サーバーは **SSH 越しの stdio** で floyd 上のものを呼ぶ。
-Mac 側の Codex 設定（`~/.codex/config.toml`、ChatGPT デスクトップのローカルスレッドが使う）に登録する:
+サンプルデータは [example/README.md](../example/README.md) の手順でサーバー PC の `example/` に置く。
+以下の依頼文はそのファイルを使う。パスは **サーバー PC 上のパス**で書く。
 
-```bash
-# Mac で実行。floyd に鍵認証で入れること（ssh floyd-remote true が何も聞かずに通る）
-codex mcp add mdscope -- ssh -T -q -o BatchMode=yes floyd-remote \
-  env MDSCOPE_ALLOWED_ROOTS=/home/kawai:/data3/kawai MDSCOPE_VIEW_URL=http://localhost:18765 \
-  /home/kawai/.conda/envs/mdscope/bin/mdscope-mcp
-```
+### A・C: Claude Code + Claude デスクトップ
 
-`.bashrc` 等が stdout に何か出すと JSON-RPC が壊れるので、floyd 側のログイン時出力は stderr か
-非対話時に抑止しておく。ChatGPT デスクトップが MCP Apps を描画できれば会話内に 3D ビューアが出る
-（[usage.md](usage.md)）。
+1. サーバー PC のターミナルで、軌道のあるディレクトリに移動し
+   ```bash
+   claude --remote-control mdscope-test      # mdscope-test はセッション名（任意）
+   ```
+2. 手元の PC の Claude デスクトップに、セッション `mdscope-test` が現れるので開く。
+3. そこから頼む:
+   > `example/alanine-dipeptide-nowater.pdb` と `example/alanine-dipeptide-0-250ns-nowater.xtc` を再生して見せて
+4. Artifact のリンクが返る。開くと 3D ビューアが出て、▶ で再生、スライダーでフレーム移動ができる。
+   構造 1 つだけなら「`example/alanine-dipeptide-nowater.pdb` を見せて」。
 
-頼むときは **「mdscope の view_structure で `/data3/...pdb` を見せて」のようにツール名を添える**。
-パスは floyd 上のものなので、添えないとモデルが Mac 側のファイルを探して「見つからない」と言うことがある。
-floyd 上のファイルを探させるには `list_files` が使える。
+Claude Code は HTML を Artifact として claude.ai に公開する。表示に使う座標（既定ではタンパク質の
+重原子、数 MB 以下）が claude.ai に上がることに注意（[README](../README.md)）。
 
-## 6. サンプルデータで確認する
+### B・D: Codex + ChatGPT デスクトップ
 
-[example/README.md](../example/README.md) の手順で ALA2 の軌道を `example/` に置き、
-Claude Code で「`example/alanine-dipeptide-nowater.pdb` を見せて」と頼む。
+1. 手元の PC の ChatGPT デスクトップで、設定の **リモートコントロール**をオンにしておく。
+2. サーバー PC のターミナルで、軌道のあるディレクトリに移動し
+   ```bash
+   codex
+   ```
+3. ChatGPT デスクトップの Codex 画面にそのセッションが現れるので開く。
+4. そこから頼む。**ツール名を添える**と迷わず速い:
+   > mdscope の `view_trajectory` で `example/alanine-dipeptide-nowater.pdb` と
+   > `example/alanine-dipeptide-0-250ns-nowater.xtc` を再生して見せて
+5. ツールの実行許可を求められたら許可する。会話内に 3D ビューアが描画され、▶ で再生できる。
+
+結果に `HTML: ~/.cache/mdscope/view_….html` も付く。会話内に描画されないときはそのファイルを
+サーバー PC のブラウザで開く（別のマシンから見たいときは [help.md](help.md)）。
+
+## 5. サーバーのコードを更新したとき
+
+MCP サーバーは **セッション開始時に起動される**。`git pull` などで更新したら、`claude` / `codex` を
+終了して起動し直す（[help.md](help.md)）。
 
 ## 開発用
 

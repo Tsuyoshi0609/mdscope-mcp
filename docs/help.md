@@ -1,37 +1,53 @@
 # 困ったとき
 
-## `mdscope-mcp --serve` の URL がブラウザで開けない
+構成（A〜D）とサーバー PC の意味は [setup.md](setup.md) §0。
 
-floyd の LAN アドレス（`192.168.1.102`）には、手元の Mac から HTTP も SSH も届かない
-（`No route to host`。floyd へは Cloudflare 経由の `ssh floyd-remote` だけが通る）。
-`--host 0.0.0.0` で公開しても見えない。**SSH ポート転送を使う**（[setup.md](setup.md) §4）。
+## 新しいツール（`view_trajectory` など）が呼ばれない／直したはずの挙動のまま
 
-## `http://localhost:8765/` を開くと別のアプリの画面が出る
-
-Mac 側で 8765 番を別のアプリ（Claude 系のローカルサービス）が使っていた。転送が張れていなくても
-「何かが見える」ので気づきにくい。**手元側のポートは 18765** にし、`MDSCOPE_VIEW_URL` も
-`http://localhost:18765` にする。転送が本当に floyd に届いているかは、floyd 側の `--serve` の
-ログ（stderr）にアクセス行が出るかで確かめる。
-
-## 新しいツール（`view_trajectory` など）が呼ばれない／古い挙動のまま
-
-MCP サーバーは **Claude Code / Codex のセッション開始時に起動され、ツール一覧もそのとき取得される**。
+MCP サーバーは **`claude` / `codex` のセッション開始時に起動され、ツール一覧もそのとき取得される**。
 サーバーのコードを更新しても、動いているセッションには反映されない（軌道を頼んでも
-`view_structure` で 1 フレームだけ返ってくる）。`claude` / `codex` を終了して立ち上げ直す。
-どのコードで動いているかは `ps -o lstart,cmd -C mdscope-mcp` の起動時刻と
+`view_structure` で 1 フレームだけ返ってくる、など）。`claude` / `codex` を終了して起動し直す。
+どのコードで動いているかは、サーバー PC で `ps -o lstart,cmd -C mdscope-mcp` の起動時刻と
 `src/mdscope/server.py` の更新時刻を比べれば分かる。
 
-## Codex / ChatGPT デスクトップで結果のリンクを開くと空白ページになる
+## 「ファイルが見つからない」と言われる
 
-デスクトップアプリ内のブラウザは Mac の `localhost:18765`（SSH 転送）に届かない。リンクは Safari で開く。
-会話内に 3D ビューアが描画されていれば、そちらを使えばよい（Codex デスクトップも MCP App を描画する）。
+パスはサーバー PC 上のもの。`list_files` ツールで探させるか、絶対パスで頼む。
+`MDSCOPE_ALLOWED_ROOTS` の外にあるファイルは「outside MDSCOPE_ALLOWED_ROOTS」で拒否される
+（[setup.md](setup.md) §1 の環境変数を直して登録し直す）。
 
-## ChatGPT デスクトップで「ファイルが見つからない」と言われる／表示まで数分かかる
+## Codex / ChatGPT でツールを呼ぶまでに時間がかかる
 
-パスは floyd 上のものだが、モデルが Mac 側（Codex の作業ディレクトリ）を探したり、
-「mdscope のツールが公開されていない」と言ってプラグイン一覧やブラウザを探し回ることがある
-（初回は約 3 分かかった）。サーバー側の起動は約 1.6 秒で、遅さの原因ではない。
+モデルが「mdscope のツールが無い」と判断してプラグイン一覧やブラウザを探し回ることがある
+（初回に約 3 分かかった例がある）。サーバーの起動は約 1.6 秒で、遅さの原因ではない。
+「mdscope の `view_trajectory` で …… を再生して」のように**ツール名を添える**。
 
-- 「mdscope の `view_structure` で …… を見せて」とツール名を添える。`list_files` で floyd 側を探させてもよい
-- Mac の `~/.codex/config.toml` の `[mcp_servers.mdscope]` に `startup_timeout_sec = 60` を足しておくと、
-  SSH（Cloudflare 経由）の接続が遅い日にツール一覧の取得が時間切れになるのを防げる
+## デスクトップアプリ内で結果のリンクを開くと空白ページになる
+
+ChatGPT / Codex デスクトップ内のブラウザは `localhost` の URL に届かない。会話内に描画された
+ビューアを使う。HTML ファイルを直接見たいときは、サーバー PC のブラウザで開く。
+
+## ビューアに "viewer error" / "coordinates would be misassigned" と出る
+
+- "WebGL is not available": そのブラウザ・ウィンドウで WebGL が無効。別のブラウザで開く。
+- "parsed N atoms but the payload has M": ビューアが読んだ原子数とペイロードが合わない。
+  古い `ui://mdscope/viewer/...` がホストにキャッシュされている可能性が高い。セッションを起動し直す。
+
+## 予備経路: 生成した HTML を別のマシンのブラウザで見る
+
+通常は不要（A・C は Artifact、B・D は会話内描画）。Codex をターミナルだけで使うときなどに、
+サーバー PC の HTML を HTTP で配り、手元のブラウザで開く。
+
+```bash
+# サーバー PC（tmux などで常駐）
+conda activate mdscope
+mdscope-mcp --serve                      # ~/.cache/mdscope を http://127.0.0.1:8765/ で配信
+codex mcp add mdscope --env MDSCOPE_VIEW_URL="http://localhost:18765" \
+  --env MDSCOPE_ALLOWED_ROOTS="$HOME:/data3/kawai" -- "$(which mdscope-mcp)"   # 結果に url が付く
+# 手元の PC: ~/.ssh/config のサーバー PC のエントリに 1 行足し、ssh で入っている間だけ見える
+#   LocalForward 18765 127.0.0.1:8765
+```
+
+手元側のポートを 18765 にするのは、Mac では 8765 を別のアプリが使っていることがあるため
+（転送が張れていなくても「何かが見える」ので気づきにくい）。LAN に直接公開（`--host 0.0.0.0`）は、
+手元から届かないネットワークが多いので使わない。

@@ -29,7 +29,7 @@
 | 表示設定 | `style`, `color`, `highlight_serials`, `notes` | ビューアのメニュー初期値と注記 |
 
 座標の予算は `max_payload_mb`（既定 8 MB、base64 後）。超えるとフレーム数を等間隔に減らす。
-Artifact の上限 16 MB と、SSH 越しの stdio で 1 メッセージとして運ぶ大きさの両方に対する余裕。
+Artifact の上限 16 MB と、stdio の 1 メッセージとして運ぶ大きさの両方に対する余裕。
 
 ## 周期境界の補正（結合情報なし）
 

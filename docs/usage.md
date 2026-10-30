@@ -1,26 +1,32 @@
 # 使い方
 
-セットアップは [setup.md](setup.md)。Claude Code に `mdscope` が登録されている前提。
+セットアップと 4 つの使い方（A〜D）は [setup.md](setup.md)。ここでは頼み方と、ツールの引数。
 
 ## 構造ファイルを見る
-
-Claude Code で頼むだけでよい:
 
 > `example/alanine-dipeptide-nowater.pdb` を見せて
 
 裏では `view_structure(topology=...)` が呼ばれ、自己完結の HTML（3Dmol.js 同梱、約 0.6 MB + 座標）が
-`~/.cache/mdscope/view_<hash>.html` に書かれる。Claude Code はそれを Artifact として公開するので、
-返ってきたリンクをブラウザ・スマホで開く。マウス / 指で回転・ズームできる。
+サーバー PC の `~/.cache/mdscope/view_<hash>.html` に書かれる。見え方は使い方による:
 
-Artifact を使わない（使えない）場合は、そのパスの HTML をブラウザで開けば同じものが見える。
+- **Claude Code（A・C）**: HTML が Artifact として公開され、リンクが返る。ブラウザ・スマホで開く
+- **Codex + ChatGPT デスクトップ（B・D）**: 結果が **会話内にそのまま 3D ビューア**として描画される
+  （MCP Apps。サーバーが `ui://mdscope/viewer/v3.html` を UI リソースとして公開し、ツールに関連付けている）。
+  右上の ⤢ で全画面
+
+どちらでも、HTML ファイルをサーバー PC のブラウザで直接開けば同じものが見える。
+マウス / 指で回転・ズーム。メニューで `style` / `color` を切り替えられる。
+
+Codex では「mdscope の `view_structure` で …… を見せて」のようにツール名を添えると速い（[help.md](help.md)）。
 
 ## 軌道を見る
 
 > `example/alanine-dipeptide-nowater.pdb` と `example/alanine-dipeptide-0-250ns-nowater.xtc` を再生して見せて
 
 `view_trajectory(topology=..., trajectory=...)` が呼ばれ、軌道全体から **等間隔に 50 フレーム**
-（`max_frames`）を抜き、**水素を除いて**（`hydrogens=False`）1 つの HTML にする。ビューア下部の ▶ で再生、スライダーで任意のフレーム、
-スペースキーで再生 / 停止、← → で 1 フレームずつ。表示されるフレーム番号は元の軌道でのフレーム番号。
+（`max_frames`）を抜き、**水素を除いて**（`hydrogens=False`）1 つの HTML にする。ビューア下部の ▶ で再生、
+スライダーで任意のフレーム、スペースキーで再生 / 停止、← → で 1 フレームずつ。
+表示されるフレーム番号は元の軌道でのフレーム番号。
 
 フレームは次の処理を経て埋め込まれる（`warnings` にも出る）:
 
@@ -32,26 +38,17 @@ Artifact を使わない（使えない）場合は、そのパスの HTML を�
 
 区間を指定するときは `start` / `stop` / `stride`（元のフレーム番号）。それでも `max_frames` を超えれば
 等間隔に間引く。座標が `max_payload_mb`（既定 8 MB）を超える場合はフレーム数を自動で減らし、
-1 フレームも入らなければ選択を絞るよう促すエラーになる（例: `protein and not name H*`、`name CA`）。
+1 フレームも入らなければ選択を絞るよう促すエラーになる（例: `name CA`）。
 
-### ChatGPT デスクトップ / Claude Desktop から（MCP Apps）
+頼み方の例:
 
-MCP Apps に対応したホストでは、`view_structure` / `view_trajectory` の結果が **会話内にそのまま 3D ビューアとして
-描画**される（サーバーが `ui://mdscope/viewer/v3.html` を UI リソースとして公開し、ツールに関連付けている）。
-ビューアの右上 ⤢ で全画面にできる。描画されない場合は Codex と同じく `url` / HTML パスで開く。
-
-### Codex から
-
-`mdscope-mcp --serve` を立てて `MDSCOPE_VIEW_URL` を設定しておくと（[setup.md](setup.md) §4）、
-結果の `artifacts[0].url`（例 `http://localhost:18765/view_<hash>.html`）が返るので、SSH ポート転送を張った
-手元のブラウザで開く。Codex に頼むときは「見せて。URL を教えて」と言えばよい。
-`http://localhost:18765/` を開けば生成済み HTML の一覧も見える。
+> 10 ns から 20 ns の間を 100 フレームで、`resname LIG` の周り 5 Å を sticks で再生して
 
 ## ツール
 
 | ツール | 主な引数 | 返すもの |
 |---|---|---|
-| `list_files` | `path`, `pattern="*"` | サーバー側（floyd）のファイル一覧。パスの確認用 |
+| `list_files` | `path`, `pattern="*"` | サーバー PC のファイル一覧。パスの確認用 |
 | `load_system` | `topology`, `trajectory`（任意、複数可） | `system_id` と組成（chain・残基範囲・配列、リガンド候補、水・イオン数、フレーム数） |
 | `describe_system` | `system_id` | 同上（選択文字列を書くための情報源） |
 | `view_structure` | `system_id` か `topology`（+ `trajectory`）, `selection="protein"`, `frame=0`, `style`, `color`, `highlight`, `title`, `pbc` | 1 フレームのビューア。HTML のパス（`artifacts[0].path`）と配信 URL（`url`、設定時のみ）、表示内容の要約、`warnings` |

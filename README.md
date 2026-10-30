@@ -22,6 +22,16 @@ mdscope-mcp は、タンパク質の構造ファイルと MD 軌道を Claude Co
 
 ## 使い方
 
+mdscope-mcp は **チャットのセッションを起動するマシン**（軌道があるマシン）に入れ、
+デスクトップアプリからそのセッションを見る。
+
+| 使い方 | セッションを起動する場所 | 見るアプリ | ビューア |
+|---|---|---|---|
+| A | リモート PC で `claude --remote-control <name>` | Claude デスクトップ | Artifact |
+| B | リモート PC で `codex` | ChatGPT デスクトップ | 会話内に描画 |
+| C | 手元の PC で `claude --remote-control <name>` | Claude デスクトップ | Artifact |
+| D | 手元の PC で `codex` | ChatGPT デスクトップ | 会話内に描画 |
+
 - セットアップ: [docs/setup.md](docs/setup.md)
 - 使い方: [docs/usage.md](docs/usage.md)
 - 仕組みと実測: [docs/mechanism.md](docs/mechanism.md)
