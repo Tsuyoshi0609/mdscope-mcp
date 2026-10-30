@@ -178,17 +178,19 @@ def view_trajectory(
     pbc: bool = True,
     align: bool = True,
     max_payload_mb: float = 8.0,
+    hydrogens: bool = False,
 ) -> ToolResult:
     """Show an interactive 3D viewer with a frame slider and play button for an MD trajectory.
     Frames start:stop:stride are thinned evenly to at most max_frames (default 50) and further if
     the coordinates would exceed max_payload_mb. Molecules are made whole across periodic
     boundaries (pbc), centered, and aligned on CA atoms to the first frame (align) so the motion is
-    easy to see. Other arguments as in view_structure. For a large system narrow the selection
-    (e.g. 'protein and not name H*') rather than raising max_payload_mb. """ + PATH_NOTE
+    easy to see. Hydrogens are hidden unless hydrogens=True. Other arguments as in view_structure.
+    For a large system narrow the selection (e.g. 'name CA') or lower max_frames rather than raising
+    max_payload_mb. """ + PATH_NOTE
     system = _system(system_id, topology, trajectory)
     data = payload.build_trajectory_payload(
         system, selection, start, stop, stride, max_frames, style, color, highlight, title,
-        pbc, align, max_payload_mb,
+        pbc, align, max_payload_mb, hydrogens,
     )
     n = data.get("n_frames", 1)
     what = f"selection '{selection}', {n} frames {data['frame']}..{data.get('frame_indices', [data['frame']])[-1]}"

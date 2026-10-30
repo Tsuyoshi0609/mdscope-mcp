@@ -48,7 +48,12 @@ def _to_pdb(ag: mda.AtomGroup) -> str:
         os.unlink(tmp)
 
 
-def _atoms(system: System, selection: str, highlight: str | None, notes: list[str]) -> tuple[mda.AtomGroup, list[int]]:
+HYDROGEN_SEL = "name H* or name [0-9]H*"
+
+
+def _atoms(
+    system: System, selection: str, highlight: str | None, notes: list[str], hydrogens: bool = True
+) -> tuple[mda.AtomGroup, list[int]]:
     ag = select(system, selection)
     if selection.strip() == "protein":
         # the default view should show bound ligands too
@@ -56,6 +61,11 @@ def _atoms(system: System, selection: str, highlight: str | None, notes: list[st
         if lig.n_atoms:
             ag = ag | lig
             notes.append(f"included {len(lig.residues)} non-protein residue(s) as ligands")
+    if not hydrogens:
+        heavy = ag.select_atoms(f"not ({HYDROGEN_SEL})")
+        if 0 < heavy.n_atoms < ag.n_atoms:
+            notes.append(f"{ag.n_atoms - heavy.n_atoms} hydrogens hidden (hydrogens=True to show them)")
+            ag = heavy
     highlight_serials: list[int] = []
     if highlight:
         hl = select(system, highlight)
@@ -80,13 +90,14 @@ def _build(
     align: bool,
     max_payload_mb: float,
     notes: list[str],
+    hydrogens: bool = True,
 ) -> dict:
     if style not in STYLES:
         raise ValueError(f"style must be one of {STYLES}")
     if color not in COLORS:
         raise ValueError(f"color must be one of {COLORS}")
     u = system.universe
-    ag, highlight_serials = _atoms(system, selection, highlight, notes)
+    ag, highlight_serials = _atoms(system, selection, highlight, notes, hydrogens)
     fr = trajectory.extract(u, ag, indices, pbc=pbc, align=align, max_payload_mb=max_payload_mb)
     notes.extend(fr.notes)
 
@@ -163,13 +174,15 @@ def build_trajectory_payload(
     pbc: bool = True,
     align: bool = True,
     max_payload_mb: float = trajectory.MAX_PAYLOAD_MB,
+    hydrogens: bool = False,
 ) -> dict:
-    """Several frames for playback: start:stop:stride thinned to max_frames, within max_payload_mb."""
+    """Several frames for playback: start:stop:stride thinned to max_frames, within max_payload_mb.
+    Hydrogens are dropped by default (they double the atom count and add little to playback)."""
     notes: list[str] = []
     indices, note = trajectory.pick_indices(len(system.universe.trajectory), start, stop, stride, max_frames)
     if note:
         notes.append(note)
     return _build(
         system, indices, selection, style, color, highlight, title,
-        pbc=pbc, align=align, max_payload_mb=max_payload_mb, notes=notes,
+        pbc=pbc, align=align, max_payload_mb=max_payload_mb, notes=notes, hydrogens=hydrogens,
     )

@@ -58,8 +58,10 @@ def test_make_whole_repairs_a_wrapped_chain():
 
 def test_amber_netcdf_and_budget():
     s = loader.load(D.PRMncdf, D.TRJncdf)
-    p = payload.build_trajectory_payload(s, "protein", max_frames=10, max_payload_mb=0.002)
+    p = payload.build_trajectory_payload(s, "protein", max_frames=10, max_payload_mb=0.001)
     assert 1 < p["n_frames"] < 10 and any("reduced" in n for n in p["notes"])
+    assert any("hydrogens hidden" in n for n in p["notes"])
+    assert payload.build_trajectory_payload(s, "protein", max_frames=2, hydrogens=True)["n_atoms"] > p["n_atoms"]
     with pytest.raises(ValueError, match="narrow the selection"):
         payload.build_trajectory_payload(s, "all", max_payload_mb=0.002)
 
