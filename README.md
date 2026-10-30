@@ -7,14 +7,14 @@ mdscope-mcp は、タンパク質の構造ファイルと MD 軌道を Claude Co
 3Dmol.js を同梱した自己完結の HTML を書き出します。Claude Code はそれを Artifact として
 公開するので、ブラウザやスマホ（リモートコントロール）からそのまま回せます。
 
-状態: 開発中（v0.0.1）。
+状態: v0.1.0。ChatGPT デスクトップと Codex デスクトップでは会話内に 3D ビューアが描画されます（MCP Apps）。
 
 ## できること
 
 | 優先 | 機能 | 状態 |
 |---|---|---|
 | 1 | 構造ファイル（`.pdb` / `.gro` / `.prmtop` …）を cartoon で表示 | 動作確認済み（Claude Code / Codex / ChatGPT デスクトップ） |
-| 2 | MD 軌道（GROMACS / AMBER / DCD）をフレーム再生 | 実装済み（実機確認中） |
+| 2 | MD 軌道（GROMACS / AMBER / DCD）をフレーム再生。周期境界の補正と重ね合わせ付き | 動作確認済み（Claude Code / Codex） |
 | 3 | 表現の変更（sticks / spheres / surface、配色、ハイライト） | 一部（sticks / spheres / lines、4 配色、ハイライト） |
 | 4 | 密度マップ（`.mrc` / `.map`）の等値面 | 未 |
 
@@ -24,6 +24,7 @@ mdscope-mcp は、タンパク質の構造ファイルと MD 軌道を Claude Co
 
 - セットアップ: [docs/setup.md](docs/setup.md)
 - 使い方: [docs/usage.md](docs/usage.md)
+- 仕組みと実測: [docs/mechanism.md](docs/mechanism.md)
 - 困ったとき: [docs/help.md](docs/help.md)
 - サンプルデータの取得: [example/README.md](example/README.md)
 

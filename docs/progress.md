@@ -15,31 +15,28 @@ floyd 上の構造ファイル・MD 軌道を、Claude Code / Codex のチャッ
 
 ## いま何をしているか（2026-10-30）
 
-目標 1 は 3 経路（floyd の Claude Code → Artifact、floyd の Codex → URL、ChatGPT デスクトップ → 会話内）
-すべてで確認済み。本線は前 2 つ（floyd 上で起動した Claude Code / Codex をデスクトップアプリで確認する）。
+目標 1・2 とも、本線の 2 経路（floyd の Claude Code → Artifact、floyd の Codex → 会話内 MCP App / URL）で
+ユーザー確認済み。目標 1 は ChatGPT デスクトップでも確認済み。
 
-Day 2（軌道）の実装が終わり、**ユーザー確認 B の途中**:
+Day 3（公開準備）を実施し、**v0.1.0 として push できる状態**。push はユーザーの指示を待つ。
+残りの確認:
 
-- 済: Claude Code（`ssh floyd-remote` → `claude --remote-control`）で ALA2 の軌道を再生できた。
-- 済: Codex デスクトップが `view_structure` の結果を会話内に MCP App として描画することを確認。
-- 待ち: Codex を立ち上げ直してから
-  「`example/alanine-dipeptide-nowater.pdb` と `example/alanine-dipeptide-0-250ns-nowater.xtc` を再生して見せて」
-  → 会話内（または `url` を Safari で開いて）▶ とスライダーで再生できる。
-  判定: 千切れ・飛びが無い、表示まで 1 分以内。
-
-自動テスト 22 件（`pytest`）は通っている。
+- ブラウザ側の再生速度（ATLAS 1cvr_A、3363 重原子 × 50 フレーム、2.2 MB）が実用的か。
+  サーバー側の実測は [mechanism.md](mechanism.md)。
+- `docs/setup.md` を別の端末で追試していない（wheel に `viewer/` と LICENSE が入ることだけ確認）。
 
 ## 最大の問題
 
-- 大きな系での再生の重さが未計測（10 万原子級）。`max_payload_mb=8` の上限でフレーム数を自動で減らすが、
-  3Dmol 側の描画時間は測っていない。
+- 目標 2 の判定「10 万原子・1 万フレーム」級はサーバー側で未計測（floyd に該当データが無い）。
+  `max_payload_mb=8` でフレーム数を自動で減らすので HTML は出るが、ブラウザ描画の重さは不明。
 - ChatGPT デスクトップでの初回表示が遅い（原因はモデル側の探索。サーバー起動は約 1.6 秒）。
-- Codex 経路は `--serve` の常駐と SSH ポート転送が前提。どちらかが落ちていると `url` は返るが開けない。
+- Codex 経路の `url` は `--serve` の常駐と SSH ポート転送が前提。会話内描画が効く Codex デスクトップでは不要。
 
 ## 次にやること
 
-1. 確認 B が通らなければ、ブラウザのコンソールのエラーを貼ってもらい `viewer/core.js` を直す。
-2. Day 3: 大きな系での実測（floyd 上の実データ、`protein and not name H*` と `name CA` での時間とサイズ）、
-   README の状態表の更新、`docs/setup.md` を新しい端末で追試 → GitHub 公開（push は指示を受けてから）。
+1. ユーザーの指示で `git push origin main`（GitHub 公開 v0.1.0）。
+2. Day 4（目標 3）: `surface` 表現、部分選択ごとの表現の重ね合わせ（例: リガンド周り 5 Å を sticks）、
+   ラベル。ビューア内のメニューも同じ項目に揃える。
+3. Day 6（目標 4）: `view_density`（`mrcfile` → 間引き → 3Dmol の等値面）。
 
 細かい日程は `docs/local/IMPLEMENTATION_PLAN.md`。

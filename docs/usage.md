@@ -19,7 +19,7 @@ Artifact を使わない（使えない）場合は、そのパスの HTML を�
 > `example/alanine-dipeptide-nowater.pdb` と `example/alanine-dipeptide-0-250ns-nowater.xtc` を再生して見せて
 
 `view_trajectory(topology=..., trajectory=...)` が呼ばれ、軌道全体から **等間隔に 50 フレーム**
-（`max_frames`）を抜いて 1 つの HTML にする。ビューア下部の ▶ で再生、スライダーで任意のフレーム、
+（`max_frames`）を抜き、**水素を除いて**（`hydrogens=False`）1 つの HTML にする。ビューア下部の ▶ で再生、スライダーで任意のフレーム、
 スペースキーで再生 / 停止、← → で 1 フレームずつ。表示されるフレーム番号は元の軌道でのフレーム番号。
 
 フレームは次の処理を経て埋め込まれる（`warnings` にも出る）:
@@ -55,7 +55,7 @@ MCP Apps に対応したホストでは、`view_structure` / `view_trajectory` �
 | `load_system` | `topology`, `trajectory`（任意、複数可） | `system_id` と組成（chain・残基範囲・配列、リガンド候補、水・イオン数、フレーム数） |
 | `describe_system` | `system_id` | 同上（選択文字列を書くための情報源） |
 | `view_structure` | `system_id` か `topology`（+ `trajectory`）, `selection="protein"`, `frame=0`, `style`, `color`, `highlight`, `title`, `pbc` | 1 フレームのビューア。HTML のパス（`artifacts[0].path`）と配信 URL（`url`、設定時のみ）、表示内容の要約、`warnings` |
-| `view_trajectory` | 同上 + `start`, `stop`, `stride`, `max_frames=50`, `align=True`, `max_payload_mb=8` | スライダー・再生付きのビューア。要約に `n_frames`, `time_span_ps` |
+| `view_trajectory` | 同上 + `start`, `stop`, `stride`, `max_frames=50`, `align=True`, `hydrogens=False`, `max_payload_mb=8` | スライダー・再生付きのビューア。要約に `n_frames`, `time_span_ps` |
 | `get_view_payload` | `view_id` | ビューア用データ（PDB 文字列・座標・表示設定）。**ビューアが呼ぶ**もので、人が呼ぶ必要はない |
 | `mdscope_info` | — | バージョン、許可ルート、キャッシュ先、読込済みの系 |
 
@@ -78,4 +78,7 @@ HTML 内のメニューから `style` / `color` はあとから切り替えら�
 - 周期境界の補正は「残基が連続している」ことを前提にする。鎖が複数ある系では、鎖どうしの相対配置が
   最小像に寄せられる（複合体がバラバラに見えたら `pbc=false` で比べる）。
 - 水・イオン・脂質は既定では表示しない（`selection` で明示すれば出る）。
-- 描画は常にブラウザ側。表示が重いときは `selection` を絞る（例: `protein and not name H*`）か `max_frames` を減らす。
+- 描画は常にブラウザ側。再生が重いときは `selection` を絞る（例: `name CA`）か `max_frames` を減らす。
+  目安はサーバー側の実測とともに [mechanism.md](mechanism.md)。
+- 時刻の表示はファイルの時刻情報をそのまま使う。DCD など単位が曖昧な形式では ps の値が合わないことがある
+  （フレーム番号は常に正しい）。
