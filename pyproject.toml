@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mdscope-mcp"
-version = "0.0.1"
+version = "0.1.0"
 description = "MCP server to view protein structures and MD trajectories from chat (Claude Code / Codex)"
 readme = "README.md"
 license = { text = "MIT" }
