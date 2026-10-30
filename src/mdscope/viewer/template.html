@@ -19,12 +19,26 @@
   <button id="reset">Reset view</button>
 </div>
 <div id="wrap"><div id="viewer"></div><div id="notes"></div></div>
+<div id="ctrl">
+  <button id="play" title="Play / pause (space)">▶</button>
+  <input type="range" id="frame" min="0" max="0" value="0" step="1">
+  <span id="flabel"></span>
+  <label>Speed <select id="fps">
+    <option value="2">2 fps</option><option value="5">5 fps</option><option value="10" selected>10 fps</option>
+    <option value="20">20 fps</option><option value="30">30 fps</option></select></label>
+</div>
 
 <script type="application/json" id="payload">__PAYLOAD_JSON__</script>
 <script>/*__3DMOL__*/</script>
 <script>/*__CORE__*/</script>
 <script>
-  MdscopeViewer.mount(JSON.parse(document.getElementById("payload").textContent));
+  try {
+    MdscopeViewer.mount(JSON.parse(document.getElementById("payload").textContent));
+  } catch (e) {
+    const n = document.getElementById("notes");
+    n.textContent = "mdscope viewer error: " + (e && e.message);
+    n.style.opacity = 1; n.style.color = "#c0392b";
+  }
 </script>
 </body>
 </html>

@@ -24,6 +24,14 @@
   <button id="fullscreen" title="Toggle fullscreen">⤢</button>
 </div>
 <div id="wrap"><div id="viewer"><div id="status">waiting for structure data…</div></div><div id="notes"></div></div>
+<div id="ctrl">
+  <button id="play" title="Play / pause (space)">▶</button>
+  <input type="range" id="frame" min="0" max="0" value="0" step="1">
+  <span id="flabel"></span>
+  <label>Speed <select id="fps">
+    <option value="2">2 fps</option><option value="5">5 fps</option><option value="10" selected>10 fps</option>
+    <option value="20">20 fps</option><option value="30">30 fps</option></select></label>
+</div>
 
 <script>/*__3DMOL__*/</script>
 <script>/*__CORE__*/</script>
@@ -51,7 +59,12 @@
   function show(payload, dark) {
     if (!payload || mounted) return;
     mounted = true;
-    api = MdscopeViewer.mount(payload, { dark });
+    try {
+      api = MdscopeViewer.mount(payload, { dark });
+    } catch (e) {
+      document.getElementById("viewer").innerHTML = '<div id="status"></div>';
+      status("viewer error: " + (e && e.message) + ". Open the HTML file / URL from the tool result instead.");
+    }
     notifySize();
   }
 
@@ -68,8 +81,9 @@
   }
   function notify(method, params) { send({ method, params }); }
   function notifySize() {
-    notify("ui/notifications/size-changed", { height: displayMode === "fullscreen" ? undefined : 460 });
-    if (window.openai && window.openai.notifyIntrinsicHeight) window.openai.notifyIntrinsicHeight(460);
+    const h = document.getElementById("ctrl").classList.contains("on") ? 500 : 460;
+    notify("ui/notifications/size-changed", { height: displayMode === "fullscreen" ? undefined : h });
+    if (window.openai && window.openai.notifyIntrinsicHeight) window.openai.notifyIntrinsicHeight(h);
   }
 
   let hostDark = null;
@@ -87,10 +101,15 @@
     } catch (e) { status("could not load structure: " + (e && e.message)); return null; }
   }
 
+  function viewIdOf(result) {
+    const s = result && result.structuredContent;
+    return s && ((s.summary && s.summary.view_id) || s.view_id);
+  }
   async function onToolResult(result) {
     let p = findPayload(result, 0);
-    if (!p && result && result.structuredContent && result.structuredContent.view_id) {
-      p = await fetchByViewId(result.structuredContent.view_id);
+    if (!p && viewIdOf(result)) {
+      status("loading structure…");
+      p = await fetchByViewId(viewIdOf(result));
     }
     if (p) show(p, hostDark); else status("tool result has no structure data");
   }

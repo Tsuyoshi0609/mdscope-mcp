@@ -15,3 +15,9 @@ button:hover { border-color: var(--accent); }
 body { display: flex; flex-direction: column; }
 #notes { position: absolute; left: 10px; bottom: 8px; font-size: 12px; opacity: .6; pointer-events: none; }
 #status { padding: 24px; opacity: .7; }
+#ctrl { display: none; gap: 10px; align-items: center; padding: 6px 12px;
+  background: var(--bar); border-top: 1px solid var(--border); }
+#ctrl.on { display: flex; }
+#ctrl input[type="range"] { flex: 1; min-width: 100px; accent-color: var(--accent); }
+#ctrl #flabel { font-variant-numeric: tabular-nums; min-width: 11em; opacity: .8; }
+#play { min-width: 2.4em; }

@@ -94,14 +94,48 @@ def describe_system(system_id: str) -> dict:
     return loader.summarize(registry.get(system_id))
 
 
-@mcp.tool(
-    app=AppConfig(resource_uri=VIEWER_URI),
-    meta={
-        "openai/outputTemplate": VIEWER_URI,
-        "openai/toolInvocation/invoking": "Building 3D view",
-        "openai/toolInvocation/invoked": "3D view ready",
-    },
-)
+VIEW_TOOL_META = {
+    "openai/outputTemplate": VIEWER_URI,
+    "openai/toolInvocation/invoking": "Building 3D view",
+    "openai/toolInvocation/invoked": "3D view ready",
+}
+# payload keys the model does not need (coordinates and viewer internals)
+_HIDDEN = ("pdb", "coords_b64", "highlight_serials", "notes", "frame_indices", "times_ps", "coord_scale")
+
+
+def _system(system_id, topology, trajectory):
+    if system_id is None and topology is None:
+        raise ValueError("give system_id or topology")
+    return registry.get(system_id) if system_id else loader.load(topology, trajectory)
+
+
+def _respond(system, data: dict, what: str) -> ToolResult:
+    """Write the standalone HTML and build the tool result shared by the view_* tools."""
+    html_path = write_html(data)
+    summary = {k: v for k, v in data.items() if k not in _HIDDEN}
+    summary["view_id"] = view_id(data)
+    summary["html_size_mb"] = round(html_path.stat().st_size / 1e6, 2)
+    if "times_ps" in data:
+        summary["time_span_ps"] = [data["times_ps"][0], data["times_ps"][-1]]
+    artifact = {"kind": "html", "path": str(html_path), "caption": f"{data['title']}: {what}"}
+    if url := view_url(html_path.name):
+        artifact["url"] = url
+    structured = {
+        "summary": summary,
+        "artifacts": [artifact],
+        "warnings": data["notes"] + system.warnings,
+        "how_to_show": SHOW_HINT,
+    }
+    text = (
+        f"{data['title']}: {data['n_residues']} residues, {data['n_atoms']} atoms, {what} "
+        f"({data['style']}/{data['color']}). HTML: {html_path}"
+        + (f" URL: {artifact['url']}" if "url" in artifact else "")
+    )
+    # the viewer payload rides in _meta: delivered to the app, hidden from the model
+    return ToolResult(content=text, structured_content=structured, meta={PAYLOAD_KEY: data})
+
+
+@mcp.tool(app=AppConfig(resource_uri=VIEWER_URI), meta=VIEW_TOOL_META)
 def view_structure(
     system_id: str | None = None,
     topology: str | None = None,
@@ -112,38 +146,53 @@ def view_structure(
     color: str = "ss",
     highlight: str | None = None,
     title: str | None = None,
+    pbc: bool | None = None,
 ) -> ToolResult:
     """Show an interactive 3D viewer (rotate/zoom) for one frame of a loaded system. Hosts that
     support MCP Apps (ChatGPT, Claude Desktop) render it inline; others get a self-contained HTML
     file path/URL. Give either system_id (from load_system) or topology (+ trajectory) to load on
     the fly. selection: MDAnalysis selection of atoms to show (default 'protein'; bound ligands are
     added automatically). style: cartoon|sticks|spheres|lines. color: ss|chain|rainbow|element.
-    highlight: optional selection drawn as magenta sticks on top. """ + PATH_NOTE
-    if system_id is None and topology is None:
-        raise ValueError("give system_id or topology")
-    system = registry.get(system_id) if system_id else loader.load(topology, trajectory)
-    data = payload.build_payload(system, selection, frame, style, color, highlight, title)
-    html_path = write_html(data)
+    highlight: optional selection drawn as magenta sticks on top. pbc: make molecules whole across
+    periodic boundaries (default: only when a trajectory is loaded). For playback of several
+    frames use view_trajectory. """ + PATH_NOTE
+    system = _system(system_id, topology, trajectory)
+    data = payload.build_payload(system, selection, frame, style, color, highlight, title, pbc)
+    return _respond(system, data, f"selection '{selection}', frame {frame}")
 
-    summary = {k: v for k, v in data.items() if k not in ("pdb", "highlight_serials", "notes")}
-    summary["view_id"] = view_id(data)
-    summary["html_size_mb"] = round(html_path.stat().st_size / 1e6, 2)
-    artifact = {"kind": "html", "path": str(html_path), "caption": f"{data['title']}: {selection}, frame {frame}"}
-    if url := view_url(html_path.name):
-        artifact["url"] = url
-    structured = {
-        "summary": summary,
-        "artifacts": [artifact],
-        "warnings": data["notes"] + system.warnings,
-        "how_to_show": SHOW_HINT,
-    }
-    text = (
-        f"{data['title']}: {data['n_residues']} residues, {data['n_atoms']} atoms "
-        f"(selection '{selection}', frame {frame}, {style}/{color}). HTML: {html_path}"
-        + (f" URL: {artifact['url']}" if "url" in artifact else "")
+
+@mcp.tool(app=AppConfig(resource_uri=VIEWER_URI), meta=VIEW_TOOL_META)
+def view_trajectory(
+    system_id: str | None = None,
+    topology: str | None = None,
+    trajectory: str | list[str] | None = None,
+    selection: str = "protein",
+    start: int = 0,
+    stop: int | None = None,
+    stride: int | None = None,
+    max_frames: int = 50,
+    style: str = "cartoon",
+    color: str = "ss",
+    highlight: str | None = None,
+    title: str | None = None,
+    pbc: bool = True,
+    align: bool = True,
+    max_payload_mb: float = 8.0,
+) -> ToolResult:
+    """Show an interactive 3D viewer with a frame slider and play button for an MD trajectory.
+    Frames start:stop:stride are thinned evenly to at most max_frames (default 50) and further if
+    the coordinates would exceed max_payload_mb. Molecules are made whole across periodic
+    boundaries (pbc), centered, and aligned on CA atoms to the first frame (align) so the motion is
+    easy to see. Other arguments as in view_structure. For a large system narrow the selection
+    (e.g. 'protein and not name H*') rather than raising max_payload_mb. """ + PATH_NOTE
+    system = _system(system_id, topology, trajectory)
+    data = payload.build_trajectory_payload(
+        system, selection, start, stop, stride, max_frames, style, color, highlight, title,
+        pbc, align, max_payload_mb,
     )
-    # the viewer payload rides in _meta: delivered to the app, hidden from the model
-    return ToolResult(content=text, structured_content=structured, meta={PAYLOAD_KEY: data})
+    n = data.get("n_frames", 1)
+    what = f"selection '{selection}', {n} frames {data['frame']}..{data.get('frame_indices', [data['frame']])[-1]}"
+    return _respond(system, data, what)
 
 
 @mcp.tool(app=AppConfig(visibility=["app"]))
