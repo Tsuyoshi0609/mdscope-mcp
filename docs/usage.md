@@ -37,7 +37,7 @@ Artifact を使わない（使えない）場合は、そのパスの HTML を�
 ### ChatGPT デスクトップ / Claude Desktop から（MCP Apps）
 
 MCP Apps に対応したホストでは、`view_structure` / `view_trajectory` の結果が **会話内にそのまま 3D ビューアとして
-描画**される（サーバーが `ui://mdscope/viewer/v2.html` を UI リソースとして公開し、ツールに関連付けている）。
+描画**される（サーバーが `ui://mdscope/viewer/v3.html` を UI リソースとして公開し、ツールに関連付けている）。
 ビューアの右上 ⤢ で全画面にできる。描画されない場合は Codex と同じく `url` / HTML パスで開く。
 
 ### Codex から

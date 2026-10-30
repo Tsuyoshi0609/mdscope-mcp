@@ -19,7 +19,7 @@ mcp = FastMCP("mdscope")
 
 # MCP Apps UI resource. Bump the version in the URI when the page changes incompatibly
 # (hosts cache ui:// resources).
-VIEWER_URI = "ui://mdscope/viewer/v2.html"
+VIEWER_URI = "ui://mdscope/viewer/v3.html"
 PAYLOAD_KEY = "mdscope/payload"
 
 SHOW_HINT = (

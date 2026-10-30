@@ -11,7 +11,7 @@
                       ├─ MDAnalysis で読む → 選択 → フレーム抽出 → PBC 補正 → int16 化
                       ├─ ~/.cache/mdscope/view_<id>.html（3Dmol.js 同梱、自己完結）を書く
                       └─ ツール結果: 要約（LLM 向け）+ 座標（_meta、LLM には見えない）
-ホストが MCP Apps 対応 → 会話内に ui://mdscope/viewer/v2.html を描画（ChatGPT / Codex デスクトップ）
+ホストが MCP Apps 対応 → 会話内に ui://mdscope/viewer/v3.html を描画（ChatGPT / Codex デスクトップ）
 ホストが Artifact 対応   → HTML を Artifact として公開（Claude Code）
 それ以外                → `mdscope-mcp --serve` の URL か HTML のパスをブラウザで開く
 ```
