@@ -11,7 +11,7 @@
                       ├─ MDAnalysis で読む → 選択 → フレーム抽出 → PBC 補正 → int16 化
                       ├─ ~/.cache/mdscope/view_<id>.html（3Dmol.js 同梱、自己完結）を書く
                       └─ ツール結果: 要約（LLM 向け）+ 座標（_meta、LLM には見えない）
-ホストが MCP Apps 対応 → 会話内に ui://mdscope/viewer/v3.html を描画（ChatGPT / Codex デスクトップ）
+ホストが MCP Apps 対応 → 会話内に ui://mdscope/viewer/v4.html を描画（ChatGPT / Codex デスクトップ）
 ホストが Artifact 対応   → HTML を Artifact として公開（Claude Code）
 それ以外                → `mdscope-mcp --serve` の URL か HTML のパスをブラウザで開く
 ```
@@ -26,7 +26,8 @@
 | `coords_b64` | `int16` の座標 `(フレーム, 原子, xyz)` を little-endian で base64 化 | `float32` の半分。0.01 Å 単位で表示には十分 |
 | `coord_scale` | 1 単位の Å（既定 0.01。系が 320 Å を超えると自動で粗くなる） | `int16` の範囲 ±32767 に収める |
 | `frame_indices` / `times_ps` | 元の軌道でのフレーム番号と時刻 | スライダーの表示用 |
-| 表示設定 | `style`, `color`, `highlight_serials`, `notes` | ビューアのメニュー初期値と注記 |
+| 表示設定 | `style`, `color`, `layers`, `notes` | ビューアのメニュー初期値と注記 |
+| `base_serials` / `layer_serials` / `highlight_serials` / `label_serials` | 部分ごとの原子の通し番号（PDB 内の 1 始まり） | 選択文字列はサーバー側（MDAnalysis）で評価し、ブラウザには原子の番号だけを渡す |
 
 座標の予算は `max_payload_mb`（既定 8 MB、base64 後）。超えるとフレーム数を等間隔に減らす。
 Artifact の上限 16 MB と、stdio の 1 メッセージとして運ぶ大きさの両方に対する余裕。
@@ -53,6 +54,10 @@ MD の出力では分子が箱の境界で千切れている。結合情報が�
 - PDB は `keepH: true` で読む。3Dmol.js は既定で水素を捨てるので、そのままだと軌道の座標が原子に対してずれる
 - フレームは `model.setCoordinates(座標, "array")` で載せ、`viewer.setFrame(i)` で切り替える
 - 二次構造は最初のフレームの幾何から 3Dmol.js が決め、全フレームで同じ
+- 表面とラベルは `setFrame` に追従しないので、フレームを替えるたびに作り直す。表面は重いので再生中は消し、
+  同じフレームに 0.15 秒留まったら作る
+- 原子クリック（`setClickable`）は `setCoordinates` より前に設定する。`setCoordinates` は原子をフレームごとに
+  複製し、`setClickable` は今のフレームの原子にしか効かないため
 
 ## 実測（2026-10-30、floyd）
 

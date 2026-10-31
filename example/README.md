@@ -15,3 +15,13 @@
 | `alanine-dipeptide-0-250ns-nowater.xtc` | 軌道 250 ns、約 41 MB |
 
 同ページには別の 2 本の軌道（`-1-`, `-2-`）と重原子のみの版もある。必要なら同じ場所に置く。
+
+## アデニル酸キナーゼ（AdK）
+
+PDB の [1AKE](https://www.rcsb.org/structure/1AKE) を取得して MD を実行し、次の 2 ファイルとして置く
+（MD の条件は問わない。表現の切り替えを試すための、ある程度大きなタンパク質）。
+
+| ファイル | 内容 |
+|---|---|
+| `adenylate_kinase.pdb` | トポロジ |
+| `adenylate_kinase.dcd` | 軌道 |

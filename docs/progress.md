@@ -8,35 +8,33 @@ floyd 上の構造ファイル・MD 軌道を、Claude Code / Codex のチャッ
 |---|---|---|
 | 1 必須 | 構造ファイルをインタラクティブに見る | 回転・ズームできる cartoon が手元の画面に出る |
 | 2 必須 | MD 軌道をインタラクティブに見る | スライダーと再生。10 万原子・1 万フレームでも 1 分以内 |
-| 3 できれば | 表現の変更 | sticks / spheres / surface、配色、ハイライト |
-| 4 余力 | 密度マップ（`.mrc` / `.map`） | 等値面を構造に重ねる |
+| 3 できれば | 表現の変更 | sticks / spheres / surface、配色、ハイライト、部分ごとの重ね合わせ、ラベル |
 
-2 まで動いたら GitHub 公開。
+密度マップ（`.mrc` / `.map`）は対象外（[results/decisions.md](results/decisions.md)）。
 
-## いま何をしているか（2026-10-30）
+## いま何をしているか（2026-10-31）
 
-目標 1・2 とも、本線の 2 経路（floyd の Claude Code → Artifact、floyd の Codex → 会話内 MCP App / URL）で
-ユーザー確認済み。目標 1 は ChatGPT デスクトップでも確認済み。
+目標 1・2 は v0.1.0 として公開済み。目標 3 を実装し、テスト（26 件）が通った状態。push はユーザーの指示を待つ。
 
-Day 3（公開準備）を実施し、**v0.1.0 として push できる状態**。push はユーザーの指示を待つ。
-残りの確認:
+ブラウザでの確認待ち（node のスタブでしか確かめていない）:
 
-- ブラウザ側の再生速度（ATLAS 1cvr_A、3363 重原子 × 50 フレーム、2.2 MB）が実用的か。
-  サーバー側の実測は [mechanism.md](mechanism.md)。
-- `docs/setup.md` の 4 つの使い方（A〜D）を、環境を消してから追試する。手順は `docs/local/todo.md`
-  （push 後に行う。手元の PC での C・D は未確認）。
+- AdK（`example/adenylate_kinase.*`、1656 重原子 × 50 フレーム、1.4 MB）で、全体 cartoon + 残基 122〜159 の
+  surface + 30〜59 の sticks + ラベル 2 つ。Artifact で開いて、次が動くかを見る
+  - 再生・停止で表面が消えて作り直される、ラベルが原子に付いて動く
+  - 2 段目の層の表示切替・表現変更・削除、入力欄からの層の追加、原子クリックでのラベル、◐ での切替
+- Codex / ChatGPT デスクトップの会話内ビューア（`ui://mdscope/viewer/v4.html`）で同じ操作。
+  2 段目が増えた分、枠の高さ（500 / 540 px）が足りているか
 
 ## 最大の問題
 
 - 目標 2 の判定「10 万原子・1 万フレーム」級はサーバー側で未計測（floyd に該当データが無い）。
   `max_payload_mb=8` でフレーム数を自動で減らすので HTML は出るが、ブラウザ描画の重さは不明。
-- ChatGPT デスクトップでの初回表示が遅い（原因はモデル側の探索。サーバー起動は約 1.6 秒）。
+  surface はさらに重く、大きな系でどこまで実用になるかも不明。
+- Codex で表示までに 10 分近くかかった例がある。`AGENTS.md` とツール説明を直したが、効果は未確認。
 
 ## 次にやること
 
-1. ユーザーの指示で `git push origin main`（GitHub 公開 v0.1.0）。その後 `docs/local/todo.md` の追試。
-2. Day 4（目標 3）: `surface` 表現、部分選択ごとの表現の重ね合わせ（例: リガンド周り 5 Å を sticks）、
-   ラベル。ビューア内のメニューも同じ項目に揃える。
-3. Day 6（目標 4）: `view_density`（`mrcfile` → 間引き → 3Dmol の等値面）。
-
-細かい日程は `docs/local/IMPLEMENTATION_PLAN.md`。
+1. 上のブラウザ確認。崩れたら `src/mdscope/viewer/core.js` を直し、`tests/viewer_harness.js` に再現を足す。
+2. Codex で「`example/adenylate_kinase.pdb` と `.dcd` を再生して」を新しいセッションで頼み、
+   ツール呼び出しの回数と時間を見る（承認ダイアログが何回出るか）。
+3. 通ったら v0.2.0 に上げて、ユーザーの指示で push。その後 `docs/local/todo.md` の追試（A〜D を素の環境から）。
