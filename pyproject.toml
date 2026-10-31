@@ -14,6 +14,7 @@ dependencies = [
     "fastmcp>=2.0",
     "MDAnalysis>=2.8",
     "numpy>=1.26",
+    "mrcfile>=1.5",
 ]
 
 [project.optional-dependencies]

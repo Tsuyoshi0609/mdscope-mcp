@@ -29,6 +29,7 @@ class Frames:
     scale: float  # Å per int16 unit
     pbc_applied: bool
     aligned: bool
+    shift: list[float]  # centroid subtracted from the first frame (file coordinates = shown + shift)
     notes: list[str] = field(default_factory=list)
 
     @property
@@ -118,12 +119,15 @@ def extract(
     coords = np.empty((len(indices), n_atoms, 3), dtype=np.float32)
     times: list[float] = []
     pbc_applied = False
+    shift = [0.0, 0.0, 0.0]
     for k, ts in enumerate(u.trajectory[[int(i) for i in indices]]):
         xyz = ag.positions.astype(np.float64)
         box = _valid_box(ts.dimensions) if pbc else None
         if box is not None:
             xyz = make_whole(xyz, res_inverse, res_first, box)
             pbc_applied = True
+        if k == 0:
+            shift = [float(c) for c in xyz.mean(axis=0)]
         xyz -= xyz.mean(axis=0)
         coords[k] = xyz
         with warnings.catch_warnings():
@@ -162,5 +166,6 @@ def extract(
         scale=scale,
         pbc_applied=pbc_applied,
         aligned=aligned,
+        shift=shift,
         notes=notes,
     )

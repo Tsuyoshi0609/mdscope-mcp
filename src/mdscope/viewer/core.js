@@ -1,7 +1,8 @@
 // Shared viewer logic for the standalone page (template.html) and the MCP App (app.html).
 // Expects $3Dmol to be loaded and a DOM with #title, #meta, #style, #color, #reset, #theme,
 // #viewer, #notes, the layer panel (#layers, #addsel, #addstyle, #addcolor, #add, #clearlabels)
-// and the trajectory controls #ctrl (#play, #frame, #fps, #flabel). Missing elements are skipped.
+// the map controls #mapbar (#mapon, #mapname, #level, #levelval, #mapmode, #mapopacity) and the
+// trajectory controls #ctrl (#play, #frame, #fps, #flabel). Missing elements are skipped.
 window.MdscopeViewer = (function () {
   const SOLVENT = ["HOH", "WAT", "SOL", "TIP3"];
   const STYLES = ["cartoon", "sticks", "spheres", "lines", "surface"];
@@ -43,6 +44,24 @@ window.MdscopeViewer = (function () {
     const out = new Array(ints.length);
     for (let i = 0; i < ints.length; i++) out[i] = ints[i] * scale;
     return out;
+  }
+
+  function decodeBytes(b64) {
+    const bin = atob(b64), out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  // the map as 3Dmol VolumeData: values[x][y][z] flattened with x slowest, placed in Å
+  function volumeOf(D) {
+    const vol = new $3Dmol.VolumeData("", "");
+    const q = decodeBytes(D.data_b64), v = new Float32Array(q.length);
+    for (let i = 0; i < q.length; i++) v[i] = D.vmin + q[i] * D.step;
+    vol.size = { x: D.size[0], y: D.size[1], z: D.size[2] };
+    vol.unit = { x: D.unit[0], y: D.unit[1], z: D.unit[2] };
+    vol.origin = { x: D.origin[0], y: D.origin[1], z: D.origin[2] };
+    vol.data = v;
+    return vol;
   }
 
   function fmtTime(ps) {
@@ -90,6 +109,11 @@ window.MdscopeViewer = (function () {
       const b64 = P.coords_b64 || "";
       const bytes = b64.length / 4 * 3 - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
       if (bytes !== P.n_frames * P.n_atoms * 3 * 2) return false;
+    }
+    if (P.density) {
+      const D = P.density, b64 = D.data_b64 || "";
+      const bytes = b64.length / 4 * 3 - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
+      if (bytes !== D.size[0] * D.size[1] * D.size[2]) return false;
     }
     return true;
   }
@@ -273,11 +297,40 @@ window.MdscopeViewer = (function () {
     styleSel.onchange = applyStyle;
     colorSel.onchange = applyStyle;
     $("reset").onclick = () => { viewer.zoomTo(); viewer.render(); };
+    // --- density map: isosurface with a contour-level slider ------------------------
+    let mapShape = null, mapTimer = null;
+    const vol = P.density ? volumeOf(P.density) : null;
+    const levelEl = $("level"), levelVal = $("levelval");
+    function drawMap() {
+      if (!vol) return;
+      if (mapShape) { viewer.removeShape(mapShape); mapShape = null; }
+      if (!$("mapon") || $("mapon").checked) {
+        mapShape = viewer.addIsosurface(vol, {
+          isoval: Number(levelEl.value), color: dark ? "#60a5fa" : "#3b6fd4",
+          opacity: Number(($("mapopacity") || {}).value || 0.5),
+          wireframe: ($("mapmode") || {}).value === "mesh",
+        });
+      }
+      viewer.render();
+    }
+    if (vol) {
+      const D = P.density, [lo, hi] = D.range;
+      $("mapbar").classList.add("on");
+      if ($("mapname")) $("mapname").textContent = D.name;
+      levelEl.min = lo; levelEl.max = hi; levelEl.step = (hi - lo) / 400 || 0.001;
+      levelEl.value = D.level;
+      const show = () => { levelVal.textContent = Number(levelEl.value).toPrecision(3); };
+      show();
+      levelEl.oninput = () => { show(); clearTimeout(mapTimer); mapTimer = setTimeout(drawMap, 80); };
+      ["mapon", "mapmode", "mapopacity"].forEach((id) => { if ($(id)) $(id).onchange = drawMap; });
+    }
+
     function setDark(d) {
       dark = d;
       setTheme(d);
       viewer.setBackgroundColor(d ? "#121212" : "#ffffff");
       redrawLabels();
+      drawMap();
       viewer.render();
     }
     if ($("theme")) $("theme").onclick = () => setDark(!dark);
@@ -323,6 +376,7 @@ window.MdscopeViewer = (function () {
 
     renderLayers();
     applyStyle();
+    drawMap();
     viewer.zoomTo();
     if (ctrl && nFrames > 1) showFrame(0);
     viewer.render();
@@ -333,6 +387,7 @@ window.MdscopeViewer = (function () {
       labelled,
       resize: () => viewer.resize(),
       setDark,
+      drawMap,
       showFrame,
       setPlaying,
       addLayer,
@@ -340,5 +395,5 @@ window.MdscopeViewer = (function () {
     };
   }
 
-  return { mount, setTheme, decodeCoords, parseResidues, isComplete };
+  return { mount, setTheme, decodeCoords, parseResidues, isComplete, volumeOf };
 })();

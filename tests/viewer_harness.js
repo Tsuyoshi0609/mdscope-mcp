@@ -23,7 +23,8 @@ function el(id, tag) {
 }
 const els = {};
 ["title", "meta", "style", "color", "reset", "theme", "viewer", "notes", "ctrl", "play", "frame", "fps",
-  "flabel", "layers", "addsel", "addstyle", "addcolor", "add", "clearlabels"]
+  "flabel", "layers", "addsel", "addstyle", "addcolor", "add", "clearlabels",
+  "mapbar", "mapon", "mapname", "level", "levelval", "mapmode", "mapopacity"]
   .forEach((id) => (els[id] = el(id, ["style", "color", "addstyle", "addcolor"].includes(id) ? "SELECT" : undefined)));
 els.fps.value = "10";
 const listeners = {};
@@ -60,7 +61,9 @@ function matches(a, sel) {
   }
   return true;
 }
+els.mapon.checked = true; els.mapopacity.value = "0.5"; els.mapmode.value = "surface";
 global.$3Dmol = {
+  VolumeData: function () { this.size = null; },
   createViewer() {
     let atoms = [], frames = null;
     stubModel = () => model;
@@ -93,6 +96,8 @@ global.$3Dmol = {
       removeAllSurfaces() { calls.surfaces = []; },
       addLabel(text, st) { calls.labels.push({ text, x: st.position.x }); },
       removeAllLabels() { calls.labels = []; },
+      addIsosurface(vol, st) { calls.isosurfaces = (calls.isosurfaces || 0) + 1; calls.iso = { n: vol.data.length, st }; return {}; },
+      removeShape() { calls.isosurfaces--; },
       resize() {}, setBackgroundColor(c) { calls.background = c; },
     };
   },
@@ -153,6 +158,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   out.labelsAfterClear = calls.labels.length;
   els.theme.onclick();
   out.themeAfterToggle = document.documentElement.dataset.theme;
+  if (P.density) {
+    out.mapbarOn = els.mapbar.classList.contains("on");
+    out.isoAtStart = calls.iso;
+    els.level.value = String(P.density.range[1]); els.level.oninput();
+    await sleep(150);
+    out.isoAfterSlide = calls.iso.st.isoval;
+    els.mapon.checked = false; els.mapon.onchange();
+    out.isosurfacesWhenOff = calls.isosurfaces;
+  }
   out.calls = Object.assign({}, calls, { setStyle: calls.setStyle.length, addStyle: calls.addStyle.length });
   console.log(JSON.stringify(out));
 })().catch((e) => { console.log(JSON.stringify({ error: String(e && e.stack) })); process.exit(1); });

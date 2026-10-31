@@ -12,9 +12,9 @@ import MDAnalysis as mda
 import numpy as np
 from MDAnalysis.exceptions import SelectionError
 
-from mdscope import trajectory
+from mdscope import density, trajectory
 from mdscope.config import cache_dir
-from mdscope.loader import LIGAND_SEL
+from mdscope.loader import LIGAND_SEL, SOLVENT_SEL
 from mdscope.registry import System
 
 Style = Literal["cartoon", "sticks", "spheres", "lines", "surface"]
@@ -174,6 +174,7 @@ def _build(
         "labels": labels,
         **parts,
         "pbc": fr.pbc_applied,
+        "shift": fr.shift,
         "pdb": pdb,
         "notes": notes,
     }
@@ -247,3 +248,44 @@ def build_trajectory_payload(
         pbc=pbc, align=align, max_payload_mb=max_payload_mb, notes=notes, hydrogens=hydrogens,
         layers=layers, labels=labels,
     )
+
+
+def build_density_payload(
+    system: System,
+    map_path: str,
+    selection: str = "protein",
+    style: str = "cartoon",
+    color: str = "chain",
+    highlight: str | None = None,
+    title: str | None = None,
+    layers: list[dict] | None = None,
+    labels: str | None = None,
+    level: float | None = None,
+    max_voxels: int = density.MAX_VOXELS,
+) -> dict:
+    """One structure with a density map in the same (file) coordinates. The structure is shown
+    centered, so the map is moved by the same shift."""
+    data = build_payload(system, selection, 0, style, color, highlight, title, False, layers, labels)
+    grid = density.read(map_path)
+    if level is None:
+        model = system.universe.select_atoms(f"not ({SOLVENT_SEL})")
+        level, how = density.auto_level(grid.values, float(np.prod(grid.voxel)), float(model.masses.sum()))
+    else:
+        how = f"level {level:.3g} as requested"
+    ca = select(system, selection).select_atoms("name CA")
+    ag = ca if ca.n_atoms else select(system, selection)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        system.universe.trajectory[0]
+    inside = density.fraction_inside(grid, ag.positions.astype(np.float64), level)
+    thinned = density.thin(grid, max_voxels)
+    thinned.origin = thinned.origin - np.array(data["shift"])
+    name = os.path.basename(map_path)
+    data["density"] = density.payload(thinned, level, name)
+    data["map"] = name
+    data["map_level"] = round(level, 4)
+    data["atoms_inside_map"] = round(inside, 3)
+    data["notes"] += thinned.notes + [how, f"{inside:.0%} of the {'CA ' if ca.n_atoms else ''}atoms lie inside the contour"]
+    if inside < 0.2:
+        data["notes"].append("few atoms lie inside the map: the map may be misplaced or the level too high")
+    return data

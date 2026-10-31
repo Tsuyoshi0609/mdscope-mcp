@@ -7,6 +7,7 @@ const [, , coreJs, bridgeJs, caseJson] = process.argv;
 const C = JSON.parse(fs.readFileSync(caseJson, "utf8"));
 const out = { calls: [], mounted: null, status: "" };
 const els = { status: { set textContent(t) { out.status = t; } }, ctrl: { classList: { contains: () => false } },
+  mapbar: { classList: { contains: () => false } },
   fullscreen: {}, viewer: {} };
 let onMessage = null;
 global.window = {

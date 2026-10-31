@@ -1,10 +1,11 @@
 # Repository Instructions
 
-## Viewing structures and trajectories
+## Viewing structures, trajectories and maps
 
-If the request is only to show a structure or trajectory with the mdscope MCP tools, do not read
-any files and do not run shell commands. Call `view_structure` (one frame) or `view_trajectory`
-(playback) right away, passing the paths the user gave as `topology` / `trajectory`.
+If the request is only to show a structure, trajectory or density map with the mdscope MCP tools,
+do not read any files and do not run shell commands. Call `view_structure` (one frame),
+`view_trajectory` (playback) or `view_density` (map over a structure) right away, passing the paths
+the user gave as `topology` / `trajectory` / `map`.
 Skip `mdscope_info` and `list_files` unless a call reports a missing file.
 The `.claude/` rules below are for editing, documenting and committing, not for viewing.
 

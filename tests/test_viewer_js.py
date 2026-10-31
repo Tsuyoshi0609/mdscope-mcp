@@ -5,6 +5,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import numpy as np
 import pytest
 from MDAnalysisTests import datafiles as D
 
@@ -71,3 +72,18 @@ def test_layers_labels_and_surface(tmp_path):
     assert out["labelsAddedByClick"] == 1 and out["labelsAfterSecondClick"] == 0
     assert out["labelsAfterClear"] == 0 and out["themeAfterToggle"] == "dark"
     assert out["calls"]["clickableBeforeFrames"] is True
+
+
+def test_density_controls(tmp_path, monkeypatch):
+    from tests.test_density import blob_map
+
+    monkeypatch.setenv("MDSCOPE_ALLOWED_ROOTS", f"{Path.home()}:{tmp_path}")
+    s = loader.load(D.PDB_small)
+    m = blob_map(tmp_path / "m.mrc", s.universe.select_atoms("protein").positions.astype(float))
+    p = payload.build_density_payload(s, str(m), max_voxels=30)
+    out = run_harness(p, tmp_path)
+    assert out["mapbarOn"] is True
+    assert out["isoAtStart"]["n"] == np.prod(p["density"]["size"])
+    assert abs(out["isoAtStart"]["st"]["isoval"] - p["density"]["level"]) < 1e-6
+    assert out["isoAfterSlide"] == pytest.approx(p["density"]["range"][1])
+    assert out["isosurfacesWhenOff"] == 0

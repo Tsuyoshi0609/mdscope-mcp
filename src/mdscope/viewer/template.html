@@ -24,6 +24,13 @@
   </span>
   <button id="clearlabels" title="Click an atom to label its residue">Clear labels</button>
 </div>
+<div id="mapbar">
+  <label><input type="checkbox" id="mapon" checked> Map <span id="mapname"></span></label>
+  <label>Level <input type="range" id="level"> <span id="levelval"></span></label>
+  <select id="mapmode"><option value="surface">surface</option><option value="mesh">mesh</option></select>
+  <label>Opacity <select id="mapopacity"><option value="0.3">0.3</option><option value="0.5" selected>0.5</option>
+    <option value="0.8">0.8</option><option value="1">1</option></select></label>
+</div>
 <div id="wrap"><div id="viewer"></div><div id="notes"></div></div>
 <div id="ctrl">
   <button id="play" title="Play / pause (space)">▶</button>

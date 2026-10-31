@@ -11,7 +11,7 @@ from fastmcp.apps import AppConfig, ResourceCSP
 from fastmcp.tools import ToolResult
 from pydantic import BaseModel, Field
 
-from mdscope import __version__, loader, payload, registry
+from mdscope import __version__, density, loader, payload, registry
 from mdscope.config import allowed_roots, cache_dir
 from mdscope.html import read_payload_text, render_app_html, view_id, write_html
 from mdscope.payload import Color, Style
@@ -21,7 +21,7 @@ mcp = FastMCP("mdscope")
 
 # MCP Apps UI resource. Bump the version in the URI when the page changes incompatibly
 # (hosts cache ui:// resources).
-VIEWER_URI = "ui://mdscope/viewer/v5.html"
+VIEWER_URI = "ui://mdscope/viewer/v6.html"
 PAYLOAD_KEY = "mdscope/payload"
 # Codex keeps only ~32 KB from each end of a tool result before handing it to the app, so the
 # app fetches large payloads in pieces well below that
@@ -124,7 +124,7 @@ VIEW_TOOL_META = {
 # payload keys the model does not need (coordinates and viewer internals)
 _HIDDEN = (
     "pdb", "coords_b64", "highlight_serials", "base_serials", "layer_serials", "label_serials",
-    "notes", "frame_indices", "times_ps", "coord_scale",
+    "notes", "frame_indices", "times_ps", "coord_scale", "shift", "density",
 )
 
 
@@ -236,6 +236,35 @@ def view_trajectory(
     n = data.get("n_frames", 1)
     what = f"selection '{selection}', {n} frames {data['frame']}..{data.get('frame_indices', [data['frame']])[-1]}"
     return _respond(system, data, what)
+
+
+@mcp.tool(app=AppConfig(resource_uri=VIEWER_URI), meta=VIEW_TOOL_META, annotations=READ_ONLY)
+def view_density(
+    map: str,
+    system_id: str | None = None,
+    topology: str | None = None,
+    selection: str = "protein",
+    style: Style = "cartoon",
+    color: Color = "chain",
+    level: float | None = None,
+    max_voxels: int = density.MAX_VOXELS,
+    layers: list[Layer] | None = None,
+    labels: str | None = None,
+    highlight: str | None = None,
+    title: str | None = None,
+) -> ToolResult:
+    """Show a density map (.mrc / .map / .ccp4, e.g. a cryo-EM map) as an isosurface over a
+    structure in the same coordinates (system_id, or topology such as a fitted PDB). The viewer
+    has a slider for the contour level. level: contour in map units; default encloses the
+    model's mass at 1.21 Å³/Da. max_voxels: the map is block-averaged until every axis has at
+    most this many voxels (default 128). The summary reports atoms_inside_map, the share of CA
+    atoms inside the contour; near 0 means the map and model do not overlap. Other arguments as
+    in view_structure. """ + PATH_NOTE
+    system = _system(system_id, topology, None)
+    data = payload.build_density_payload(
+        system, map, selection, style, color, highlight, title, _layers(layers), labels, level, max_voxels
+    )
+    return _respond(system, data, f"selection '{selection}' with map {data['map']} at level {data['map_level']}")
 
 
 @mcp.tool(app=AppConfig(visibility=["app"]))

@@ -29,3 +29,8 @@ body { display: flex; flex-direction: column; }
 #layerbar input[type="text"], #addsel { font: inherit; padding: 3px 6px; border-radius: 6px;
   border: 1px solid var(--border); background: var(--bg); color: var(--fg); max-width: 100%; }
 #clearlabels { margin-left: auto; }
+#mapbar { display: none; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 5px 12px;
+  background: var(--bar); border-bottom: 1px solid var(--border); font-size: 13px; }
+#mapbar.on { display: flex; }
+#mapbar input[type="range"] { width: 180px; accent-color: var(--accent); }
+#levelval { font-variant-numeric: tabular-nums; min-width: 3.5em; display: inline-block; }
