@@ -81,6 +81,19 @@ window.MdscopeViewer = (function () {
     sel.value = current;
   }
 
+  // false when the host cut the payload short (the PDB or the frames do not match the atom count)
+  function isComplete(P) {
+    if (!P || typeof P.pdb !== "string" || !P.n_atoms) return false;
+    const n = (P.pdb.match(/^(ATOM  |HETATM)/gm) || []).length;
+    if (n !== P.n_atoms) return false;
+    if ((P.n_frames || 1) > 1) {
+      const b64 = P.coords_b64 || "";
+      const bytes = b64.length / 4 * 3 - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
+      if (bytes !== P.n_frames * P.n_atoms * 3 * 2) return false;
+    }
+    return true;
+  }
+
   function mount(P, opts) {
     opts = opts || {};
     let dark = opts.dark !== undefined && opts.dark !== null ? opts.dark
@@ -327,5 +340,5 @@ window.MdscopeViewer = (function () {
     };
   }
 
-  return { mount, setTheme, decodeCoords, parseResidues };
+  return { mount, setTheme, decodeCoords, parseResidues, isComplete };
 })();

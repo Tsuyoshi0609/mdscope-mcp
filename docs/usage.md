@@ -11,7 +11,7 @@
 
 - **Claude Code（A・C）**: HTML が Artifact として公開され、リンクが返る。ブラウザ・スマホで開く
 - **Codex + ChatGPT デスクトップ（B・D）**: 結果が **会話内にそのまま 3D ビューア**として描画される
-  （MCP Apps。サーバーが `ui://mdscope/viewer/v4.html` を UI リソースとして公開し、ツールに関連付けている）。
+  （MCP Apps。サーバーが `ui://mdscope/viewer/v5.html` を UI リソースとして公開し、ツールに関連付けている）。
   右上の ⤢ で全画面
 
 どちらでも、HTML ファイルをサーバー PC のブラウザで直接開けば同じものが見える。
@@ -85,7 +85,7 @@ labels="resid 1 or resid 214"
 | `describe_system` | `system_id` | 同上（選択文字列を書くための情報源） |
 | `view_structure` | `system_id` か `topology`（+ `trajectory`）, `selection="protein"`, `frame=0`, `style`, `color`, `layers`, `labels`, `highlight`, `title`, `pbc` | 1 フレームのビューア。HTML のパス（`artifacts[0].path`）と配信 URL（`url`、設定時のみ）、表示内容の要約、`warnings` |
 | `view_trajectory` | 同上 + `start`, `stop`, `stride`, `max_frames=50`, `align=True`, `hydrogens=False`, `max_payload_mb=8` | スライダー・再生付きのビューア。要約に `n_frames`, `time_span_ps` |
-| `get_view_payload` | `view_id` | ビューア用データ（PDB 文字列・座標・表示設定）。**ビューアが呼ぶ**もので、人が呼ぶ必要はない |
+| `get_view_payload` | `view_id`, `offset` | ビューア用データ（PDB 文字列・座標・表示設定）の JSON を 24000 文字ずつ。**ビューアが呼ぶ**もので、人が呼ぶ必要はない |
 | `mdscope_info` | — | バージョン、許可ルート、キャッシュ先、読込済みの系。セットアップの診断用 |
 
 ### `view_structure` / `view_trajectory` の共通引数

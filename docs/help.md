@@ -39,6 +39,8 @@ ChatGPT / Codex デスクトップ内のブラウザは `localhost` の URL に�
 - "WebGL is not available": そのブラウザ・ウィンドウで WebGL が無効。別のブラウザで開く。
 - "parsed N atoms but the payload has M": ビューアが読んだ原子数とペイロードが合わない。
   古い `ui://mdscope/viewer/...` がホストにキャッシュされている可能性が高い。セッションを起動し直す。
+  （Codex は長いツール結果の両端 約 32 KB ずつだけをビューアに渡す。今のビューアはそれを検出して
+  サーバーから取り直すので、v5 以降でこの表示が出るなら別の原因）
 
 ## 予備経路: 生成した HTML を別のマシンのブラウザで見る
 

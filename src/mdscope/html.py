@@ -67,10 +67,15 @@ def write_html(payload: dict, out_dir: Path | None = None) -> Path:
     return out
 
 
-def read_payload(vid: str, out_dir: Path | None = None) -> dict:
+def read_payload_text(vid: str, out_dir: Path | None = None) -> str:
+    """The saved payload as JSON text (the viewer app fetches it in pieces)."""
     if not vid.isalnum():
         raise ValueError(f"bad view_id {vid!r}")
     p = (out_dir or cache_dir()) / f"view_{vid}.json"
     if not p.is_file():
         raise FileNotFoundError(f"no view with id {vid}; call view_structure again")
-    return json.loads(p.read_text(encoding="utf-8"))
+    return p.read_text(encoding="utf-8")
+
+
+def read_payload(vid: str, out_dir: Path | None = None) -> dict:
+    return json.loads(read_payload_text(vid, out_dir))

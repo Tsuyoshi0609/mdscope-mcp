@@ -48,7 +48,7 @@
 (function () {
   const PAYLOAD_KEY = "mdscope/payload";
   const PROTOCOL = "2026-01-26";
-  let api = null, mounted = false, displayMode = "inline";
+  let api = null, mounted = false, resolving = false, displayMode = "inline";
   const status = (t) => { const s = document.getElementById("status"); if (s) s.textContent = t; };
 
   // --- find the viewer payload anywhere in a tool result envelope -----------------
@@ -99,24 +99,50 @@
     if (ctx.displayMode) { displayMode = ctx.displayMode; if (api) setTimeout(() => api.resize(), 50); }
   }
 
+  function callTool(name, args) {
+    if (window.openai && window.openai.callTool) return window.openai.callTool(name, args);
+    return request("tools/call", { name, arguments: args });
+  }
+  function chunkOf(r) {
+    if (r && r.structuredContent && typeof r.structuredContent.data === "string") return r.structuredContent;
+    const t = r && r.content && r.content[0] && r.content[0].text;
+    return t ? JSON.parse(t) : null;
+  }
   async function fetchByViewId(viewId) {
-    // host stripped _meta: ask the server for the payload (app-only tool)
+    // the host stripped _meta or cut it short: fetch the saved payload in pieces (app-only tool)
     try {
-      const r = await request("tools/call", { name: "get_view_payload", arguments: { view_id: viewId } });
-      return (r && r.structuredContent) || findPayload(r, 0);
+      let text = "", offset = 0, total = 1;
+      while (offset < total) {
+        const c = chunkOf(await callTool("get_view_payload", { view_id: viewId, offset }));
+        if (!c || !c.data) throw new Error("empty piece at offset " + offset);
+        text += c.data; offset += c.data.length; total = c.total;
+        status(`loading structure… ${Math.round(100 * offset / total)}%`);
+      }
+      return JSON.parse(text);
     } catch (e) { status("could not load structure: " + (e && e.message)); return null; }
   }
 
-  function viewIdOf(result) {
-    const s = result && result.structuredContent;
-    return s && ((s.summary && s.summary.view_id) || s.view_id);
+  function viewIdOf(obj, depth) {
+    if (!obj || typeof obj !== "object" || depth > 6) return null;
+    if (typeof obj.view_id === "string") return obj.view_id;
+    for (const k of Object.keys(obj)) {
+      const r = viewIdOf(obj[k], depth + 1);
+      if (r) return r;
+    }
+    return null;
+  }
+  async function resolve(result) {
+    let p = findPayload(result, 0);
+    if (p && !MdscopeViewer.isComplete(p)) p = null;   // e.g. Codex keeps only the ends of a long result
+    const vid = viewIdOf(result, 0);
+    if (!p && vid) {
+      status("loading structure…");
+      p = await fetchByViewId(vid);
+    }
+    return p;
   }
   async function onToolResult(result) {
-    let p = findPayload(result, 0);
-    if (!p && viewIdOf(result)) {
-      status("loading structure…");
-      p = await fetchByViewId(viewIdOf(result));
-    }
+    const p = await resolve(result);
     if (p) show(p, hostDark); else status("tool result has no structure data");
   }
 
@@ -147,9 +173,12 @@
     const o = window.openai;
     if (!o) return false;
     applyContext({ theme: o.theme, displayMode: o.displayMode });
-    const p = findPayload(o.toolResponseMetadata, 0) || findPayload(o.toolOutput, 0);
-    if (p) { show(p, hostDark); return true; }
-    return false;
+    const res = { meta: o.toolResponseMetadata, out: o.toolOutput };
+    if (!findPayload(res, 0) && !viewIdOf(res, 0)) return false;
+    if (resolving) return true;
+    resolving = true;
+    resolve(res).then((p) => { if (p) show(p, hostDark); else status("tool result has no structure data"); });
+    return true;
   }
   window.addEventListener("openai:set_globals", () => { if (!mounted) tryOpenAI(); else if (window.openai) applyContext({ theme: window.openai.theme, displayMode: window.openai.displayMode }); });
 

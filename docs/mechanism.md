@@ -11,7 +11,7 @@
                       ├─ MDAnalysis で読む → 選択 → フレーム抽出 → PBC 補正 → int16 化
                       ├─ ~/.cache/mdscope/view_<id>.html（3Dmol.js 同梱、自己完結）を書く
                       └─ ツール結果: 要約（LLM 向け）+ 座標（_meta、LLM には見えない）
-ホストが MCP Apps 対応 → 会話内に ui://mdscope/viewer/v4.html を描画（ChatGPT / Codex デスクトップ）
+ホストが MCP Apps 対応 → 会話内に ui://mdscope/viewer/v5.html を描画（ChatGPT / Codex デスクトップ）
 ホストが Artifact 対応   → HTML を Artifact として公開（Claude Code）
 それ以外                → `mdscope-mcp --serve` の URL か HTML のパスをブラウザで開く
 ```
@@ -28,6 +28,10 @@
 | `frame_indices` / `times_ps` | 元の軌道でのフレーム番号と時刻 | スライダーの表示用 |
 | 表示設定 | `style`, `color`, `layers`, `notes` | ビューアのメニュー初期値と注記 |
 | `base_serials` / `layer_serials` / `highlight_serials` / `label_serials` | 部分ごとの原子の通し番号（PDB 内の 1 始まり） | 選択文字列はサーバー側（MDAnalysis）で評価し、ブラウザには原子の番号だけを渡す |
+
+ペイロードはツール結果の `_meta` に載せ、`view_<id>.json` としても保存する。会話内ビューアは、受け取った
+ペイロードの原子数・座標の長さが合わなければ（Codex は長いツール結果の両端 約 32 KB ずつしか渡さない）、
+`get_view_payload` で 24000 文字ずつ取り直す。
 
 座標の予算は `max_payload_mb`（既定 8 MB、base64 後）。超えるとフレーム数を等間隔に減らす。
 Artifact の上限 16 MB と、stdio の 1 メッセージとして運ぶ大きさの両方に対する余裕。

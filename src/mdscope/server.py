@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from mdscope import __version__, loader, payload, registry
 from mdscope.config import allowed_roots, cache_dir
-from mdscope.html import read_payload, render_app_html, view_id, write_html
+from mdscope.html import read_payload_text, render_app_html, view_id, write_html
 from mdscope.payload import Color, Style
 from mdscope.serve import serve, view_url
 
@@ -21,8 +21,11 @@ mcp = FastMCP("mdscope")
 
 # MCP Apps UI resource. Bump the version in the URI when the page changes incompatibly
 # (hosts cache ui:// resources).
-VIEWER_URI = "ui://mdscope/viewer/v4.html"
+VIEWER_URI = "ui://mdscope/viewer/v5.html"
 PAYLOAD_KEY = "mdscope/payload"
+# Codex keeps only ~32 KB from each end of a tool result before handing it to the app, so the
+# app fetches large payloads in pieces well below that
+PAYLOAD_CHUNK = 24000
 
 SHOW_HINT = (
     "If the host rendered an inline 3D viewer, nothing else is needed. Otherwise: in Claude Code, "
@@ -236,10 +239,13 @@ def view_trajectory(
 
 
 @mcp.tool(app=AppConfig(visibility=["app"]))
-def get_view_payload(view_id: str) -> dict:
-    """Return the viewer payload (PDB text + display settings) of a previous view_structure call.
-    Used by the viewer app when the host does not forward tool-result metadata."""
-    return read_payload(view_id)
+def get_view_payload(view_id: str, offset: int = 0, length: int = PAYLOAD_CHUNK) -> dict:
+    """Return a piece of the viewer payload (JSON text) of a previous view_* call. Used by the
+    viewer app when the host does not forward tool-result metadata or cuts it short; the app joins
+    the pieces until offset reaches total."""
+    text = read_payload_text(view_id)
+    length = max(1, min(length, PAYLOAD_CHUNK))
+    return {"view_id": view_id, "offset": offset, "total": len(text), "data": text[offset:offset + length]}
 
 
 def main() -> None:
