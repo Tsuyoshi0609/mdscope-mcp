@@ -25,3 +25,18 @@ PDB の [1AKE](https://www.rcsb.org/structure/1AKE) を取得して MD を実行
 |---|---|
 | `adenylate_kinase.pdb` | トポロジ |
 | `adenylate_kinase.dcd` | 軌道 |
+
+## 20S プロテアソーム（3C91 と EMD-1733）
+
+クライオ電顕マップと、そこに当てはめた原子モデル。`view_density` を試すのに使う。
+
+```bash
+cd example
+curl -LO https://files.rcsb.org/download/3C91.pdb
+curl -L https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-1733/map/emd_1733.map.gz | gunzip > EMD-1733.map
+```
+
+| ファイル | 内容 |
+|---|---|
+| `3C91.pdb` | 原子モデル（28 鎖、46578 原子、分解能 6.8 Å） |
+| `EMD-1733.map` | マップ（144³ ボクセル、1.37 Å/ボクセル、約 12 MB） |

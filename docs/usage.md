@@ -11,7 +11,7 @@
 
 - **Claude Code（A・C）**: HTML が Artifact として公開され、リンクが返る。ブラウザ・スマホで開く
 - **Codex + ChatGPT デスクトップ（B・D）**: 結果が **会話内にそのまま 3D ビューア**として描画される
-  （MCP Apps。サーバーが `ui://mdscope/viewer/v5.html` を UI リソースとして公開し、ツールに関連付けている）。
+  （MCP Apps。サーバーが `ui://mdscope/viewer/v6.html` を UI リソースとして公開し、ツールに関連付けている）。
   右上の ⤢ で全画面
 
 どちらでも、HTML ファイルをサーバー PC のブラウザで直接開けば同じものが見える。
@@ -76,6 +76,23 @@ labels="resid 1 or resid 214"
 ビューア内で足せる層は残基番号・鎖・残基名だけで指定する（ブラウザ側に MDAnalysis が無いため）。
 `around` などはツールの `layers` で頼む。ビューアでの変更は保存されず、開き直すとツールで指定した状態に戻る。
 
+## 密度マップを重ねる
+
+> `example/EMD-1733.map` を `example/3C91.pdb` に重ねて見せて
+
+`view_density(map=..., topology=...)` が呼ばれ、構造（既定は chain 色の cartoon）にマップの等値面を重ねる。
+構造とマップは**同じ座標系にある**ことが前提（マップに当てはめたモデルなど）。位置合わせはしない。
+
+- **しきい値（`level`）**: 既定は、モデルの質量 × 1.21 Å³/Da の体積を囲む値。ビューアのスライダーで
+  マップの中央値から最大値まで動かせる。数値で頼むときはマップの値の単位で（例: `level=1.5`）
+- **間引き（`max_voxels=128`）**: どの軸も 128 ボクセル以下になるまで 2×2×2 などのブロック平均をとる。
+  EMD-1733（144³）は 72³、2.7 Å/ボクセルになる。細部が要るなら値を上げる（HTML が大きくなる）
+- **重なりの確認**: 結果の `atoms_inside_map` は、CA 原子のうち等値面の内側にある割合。
+  3C91 + EMD-1733 では 0.97。0.2 未満なら警告が出る（マップの位置がずれているか、しきい値が高すぎる）
+
+ビューアの 3 段目で、マップの表示切替・しきい値・surface / mesh・不透明度を変えられる。
+構造の表現は他のツールと同じく変えられる。
+
 ## ツール
 
 | ツール | 主な引数 | 返すもの |
@@ -85,6 +102,7 @@ labels="resid 1 or resid 214"
 | `describe_system` | `system_id` | 同上（選択文字列を書くための情報源） |
 | `view_structure` | `system_id` か `topology`（+ `trajectory`）, `selection="protein"`, `frame=0`, `style`, `color`, `layers`, `labels`, `highlight`, `title`, `pbc` | 1 フレームのビューア。HTML のパス（`artifacts[0].path`）と配信 URL（`url`、設定時のみ）、表示内容の要約、`warnings` |
 | `view_trajectory` | 同上 + `start`, `stop`, `stride`, `max_frames=50`, `align=True`, `hydrogens=False`, `max_payload_mb=8` | スライダー・再生付きのビューア。要約に `n_frames`, `time_span_ps` |
+| `view_density` | `map`, `system_id` か `topology`, `level`, `max_voxels=128`, `selection`, `style`, `color="chain"`, `layers`, `labels`, `highlight` | 構造 + マップの等値面のビューア。要約に `map_level`, `atoms_inside_map` |
 | `get_view_payload` | `view_id`, `offset` | ビューア用データ（PDB 文字列・座標・表示設定）の JSON を 24000 文字ずつ。**ビューアが呼ぶ**もので、人が呼ぶ必要はない |
 | `mdscope_info` | — | バージョン、許可ルート、キャッシュ先、読込済みの系。セットアップの診断用 |
 
@@ -111,5 +129,6 @@ labels="resid 1 or resid 214"
 - 水・イオン・脂質は既定では表示しない（`selection` で明示すれば出る）。
 - 描画は常にブラウザ側。再生が重いときは `selection` を絞る（例: `name CA`）か `max_frames` を減らす。
   目安はサーバー側の実測とともに [mechanism.md](mechanism.md)。
+- 密度マップは静止構造にだけ重ねられる（軌道とは重ねない）。直交でない格子のマップは読めない。
 - 時刻の表示はファイルの時刻情報をそのまま使う。DCD など単位が曖昧な形式では ps の値が合わないことがある
   （フレーム番号は常に正しい）。

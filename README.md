@@ -16,6 +16,7 @@ mdscope-mcp は、タンパク質の構造ファイルと MD 軌道を Claude Co
 | 1 | 構造ファイル（`.pdb` / `.gro` / `.prmtop` …）を cartoon で表示 | 動作確認済み（Claude Code / Codex / ChatGPT デスクトップ） |
 | 2 | MD 軌道（GROMACS / AMBER / DCD）をフレーム再生。周期境界の補正と重ね合わせ付き | 動作確認済み（Claude Code / Codex） |
 | 3 | 表現の変更（sticks / spheres / surface、配色、部分ごとの表現の重ね合わせ、ラベル）。ビューアの中でも変えられる | 実装済み・ブラウザでの確認待ち |
+| 4 | 密度マップ（`.mrc` / `.map`）を構造に重ね、しきい値をスライダーで変える | 実装済み・ブラウザでの確認待ち |
 
 解析（RMSD など）やシミュレーションの実行は対象外です。
 

@@ -11,7 +11,7 @@
                       ├─ MDAnalysis で読む → 選択 → フレーム抽出 → PBC 補正 → int16 化
                       ├─ ~/.cache/mdscope/view_<id>.html（3Dmol.js 同梱、自己完結）を書く
                       └─ ツール結果: 要約（LLM 向け）+ 座標（_meta、LLM には見えない）
-ホストが MCP Apps 対応 → 会話内に ui://mdscope/viewer/v5.html を描画（ChatGPT / Codex デスクトップ）
+ホストが MCP Apps 対応 → 会話内に ui://mdscope/viewer/v6.html を描画（ChatGPT / Codex デスクトップ）
 ホストが Artifact 対応   → HTML を Artifact として公開（Claude Code）
 それ以外                → `mdscope-mcp --serve` の URL か HTML のパスをブラウザで開く
 ```
@@ -35,6 +35,18 @@
 
 座標の予算は `max_payload_mb`（既定 8 MB、base64 後）。超えるとフレーム数を等間隔に減らす。
 Artifact の上限 16 MB と、stdio の 1 メッセージとして運ぶ大きさの両方に対する余裕。
+
+## 密度マップ
+
+1. `mrcfile` で読み、ヘッダの `mapc` / `mapr` / `maps`（ファイルの列・行・断面がどの軸か）に従って
+   `values[x, y, z]` に並べ替える
+2. 最初のボクセルの位置は、ヘッダの `origin` が 0 でなければそれ、0 なら `nxstart` 等 × ボクセル幅
+3. ブロック平均で間引く。平均したボクセルの位置は、元のボクセル群の中心（原点を `(f-1)/2` ボクセルずらす）
+4. 構造は重心を原点に移して表示するので、マップの原点も同じだけ動かす
+5. `uint8` に丸めて（値 = 最小値 + q × 幅）base64 で埋め込む。ビューアは 3Dmol.js の `VolumeData` に
+   値を入れ、`addIsosurface` で描く（しきい値を変えるたびに作り直す）
+
+軸の並びと原点の解釈を間違えるとエラーにならずにマップがずれるので、`atoms_inside_map` で確かめる。
 
 ## 周期境界の補正（結合情報なし）
 
@@ -75,3 +87,5 @@ ATLAS の 1cvr_A（6662 原子、30003 フレーム、DCD 3 本 2.4 GB）で、�
 | 水素なし | 200 | 3363 | 5.6 秒 | 6.2 MB |
 
 ALA2（22 原子）は 250000 フレームから 100 フレームで 0.3 秒、0.57 MB。ブラウザ側の描画時間は未計測。
+
+3C91（46578 原子）+ EMD-1733（144³ → 72³）の `view_density` は 1.6 秒、HTML 4.9 MB（2026-11-01）。
