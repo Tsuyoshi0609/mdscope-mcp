@@ -1,8 +1,16 @@
 # Repository Instructions
 
+## Viewing structures and trajectories
+
+If the request is only to show a structure or trajectory with the mdscope MCP tools, do not read
+any files and do not run shell commands. Call `view_structure` (one frame) or `view_trajectory`
+(playback) right away, passing the paths the user gave as `topology` / `trajectory`.
+Skip `mdscope_info` and `list_files` unless a call reports a missing file.
+The `.claude/` rules below are for editing, documenting and committing, not for viewing.
+
 ## Shared Claude/Codex Rules
 
-Before starting any task in this repository, read all instruction files under `.claude/` recursively and follow them as repository instructions.
+Before editing code or docs, or running git, read all instruction files under `.claude/` recursively and follow them as repository instructions.
 
 - Treat `.claude/**/*.md` as instructions for the entire repository unless a file explicitly limits its scope.
 - Apply the same precedence and intent that Claude uses for those rules.
