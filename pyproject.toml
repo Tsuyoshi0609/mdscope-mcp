@@ -18,7 +18,6 @@ dependencies = [
 
 [project.optional-dependencies]
 amber = ["netCDF4>=1.6"]
-density = ["mrcfile>=1.5"]
 png = []            # pymol-open-source は pip に無い。conda-forge から入れる（docs/setup.md）
 dev = ["pytest>=8", "ruff>=0.5", "MDAnalysisTests>=2.8"]
 

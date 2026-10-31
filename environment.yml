@@ -6,7 +6,6 @@ dependencies:
   - python=3.12
   - mdanalysis>=2.8
   - netcdf4          # AMBER NetCDF 軌道
-  - mrcfile          # 密度マップ（目標 4）
   - numpy
   - pytest
   - ruff

@@ -30,7 +30,7 @@ mdscope-mcp --check                     # version, allowed_roots, cache_dir が�
 which mdscope-mcp                       # ← この絶対パスを §2 / §3 で使う
 ```
 
-`environment.yml` には MDAnalysis、netCDF4（AMBER 軌道）、mrcfile（密度マップ）、fastmcp と、
+`environment.yml` には MDAnalysis、netCDF4（AMBER 軌道）、fastmcp と、
 このリポジトリ自身（`pip install -e .`）が含まれる。
 
 ### 環境変数
