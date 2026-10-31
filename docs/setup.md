@@ -30,8 +30,8 @@ mdscope-mcp --check                     # version, allowed_roots, cache_dir が�
 which mdscope-mcp                       # ← この絶対パスを §2 / §3 で使う
 ```
 
-`environment.yml` には MDAnalysis、netCDF4（AMBER 軌道）、mrcfile（密度マップ）、fastmcp と、
-このリポジトリ自身（`pip install -e .`）が含まれる。
+`environment.yml` で、構造・軌道の読み込み（MDAnalysis、AMBER 軌道用の netCDF4）、密度マップの読み込み（mrcfile）、
+MCP サーバー本体がまとめて入る。
 
 ### 環境変数
 
@@ -40,7 +40,7 @@ which mdscope-mcp                       # ← この絶対パスを §2 / §3 �
 | `MDSCOPE_ALLOWED_ROOTS` | `$HOME` | 読んでよいディレクトリ。`:` 区切り。**ここ以外のパスは拒否される** |
 | `MDSCOPE_CACHE_DIR` | `~/.cache/mdscope` | 生成した HTML とログの置き場 |
 
-軌道が `$HOME` の外にあるなら `MDSCOPE_ALLOWED_ROOTS` に追加する（例: `$HOME:/data3/kawai`）。
+データが `$HOME` の外にあるなら `MDSCOPE_ALLOWED_ROOTS` に追加する（例: `$HOME:/path/to/data`。以下の例も同じ）。
 §2 / §3 の `-e` / `--env` で渡す。
 
 ## 2. Claude Code に登録する（A・C）
@@ -48,7 +48,7 @@ which mdscope-mcp                       # ← この絶対パスを §2 / §3 �
 ```bash
 conda activate mdscope
 claude mcp add --scope user mdscope \
-  -e MDSCOPE_ALLOWED_ROOTS="$HOME:/data3/kawai" \
+  -e MDSCOPE_ALLOWED_ROOTS="$HOME:/path/to/data" \
   -- "$(which mdscope-mcp)"
 claude mcp list        # mdscope: ... - ✔ Connected と出れば OK
 ```
@@ -61,7 +61,7 @@ claude mcp list        # mdscope: ... - ✔ Connected と出れば OK
 ```bash
 conda activate mdscope
 codex mcp add mdscope \
-  --env MDSCOPE_ALLOWED_ROOTS="$HOME:/data3/kawai" \
+  --env MDSCOPE_ALLOWED_ROOTS="$HOME:/path/to/data" \
   -- "$(which mdscope-mcp)"
 codex mcp list         # mdscope が enabled で出れば OK
 ```
@@ -84,6 +84,7 @@ codex mcp list         # mdscope が enabled で出れば OK
    > `example/alanine-dipeptide-nowater.pdb` と `example/alanine-dipeptide-0-250ns-nowater.xtc` を再生して見せて
 4. Artifact のリンクが返る。開くと 3D ビューアが出て、▶ で再生、スライダーでフレーム移動ができる。
    構造 1 つだけなら「`example/alanine-dipeptide-nowater.pdb` を見せて」。
+   表現の変え方や密度マップの重ね方は [usage.md](usage.md)。
 
 Claude Code は HTML を Artifact として claude.ai に公開する。表示に使う座標（既定ではタンパク質の
 重原子、数 MB 以下）が claude.ai に上がることに注意（[README](../README.md)）。
@@ -108,11 +109,3 @@ Claude Code は HTML を Artifact として claude.ai に公開する。表示�
 
 MCP サーバーは **セッション開始時に起動される**。`git pull` などで更新したら、`claude` / `codex` を
 終了して起動し直す（[help.md](help.md)）。
-
-## 開発用
-
-```bash
-conda activate mdscope
-pytest
-ruff check src tests
-```
