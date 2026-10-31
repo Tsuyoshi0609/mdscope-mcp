@@ -57,3 +57,20 @@ def test_view_structure_tool_roundtrip(tmp_path, monkeypatch):
     data = asyncio.run(go())
     assert data["artifacts"][0]["path"].endswith(".html")
     assert data["summary"]["color"] == "chain"
+
+
+def test_view_tools_advertise_enums_and_read_only():
+    from typing import get_args
+
+    from mdscope.server import Color, Style
+
+    assert get_args(Style) == payload.STYLES and get_args(Color) == payload.COLORS
+
+    async def go():
+        async with Client(mcp) as c:
+            return {t.name: t for t in await c.list_tools()}
+
+    tools = asyncio.run(go())
+    props = tools["view_trajectory"].inputSchema["properties"]
+    assert props["style"]["enum"] == list(payload.STYLES)
+    assert all(t.annotations.read_only_hint for n, t in tools.items() if n != "get_view_payload")

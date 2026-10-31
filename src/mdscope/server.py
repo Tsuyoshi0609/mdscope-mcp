@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from typing import Literal
 
 from fastmcp import FastMCP
 from fastmcp.apps import AppConfig, ResourceCSP
@@ -44,23 +45,33 @@ def viewer_app() -> str:
     return render_app_html()
 
 
-@mcp.tool
+# none of the tools change user data (view_* only write HTML into the cache dir)
+READ_ONLY = {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False}
+
+Style = Literal["cartoon", "sticks", "spheres", "lines"]
+Color = Literal["ss", "chain", "rainbow", "element"]
+
+
+@mcp.tool(annotations=READ_ONLY)
 def mdscope_info() -> dict:
-    """Return server version, allowed roots, cache directory and loaded systems (self-check)."""
+    """Return server version, allowed roots, cache directory and loaded systems. For diagnosing
+    setup problems only; not needed before viewing."""
     return info()
 
 
 PATH_NOTE = (
     "Paths are on the machine where mdscope-mcp runs (possibly a remote host reached over SSH), "
-    "not on the client's machine; do not check them with local shell commands, use list_files."
+    "not on the client's machine. Pass the paths the user gave as they are (relative paths resolve "
+    "against the server's working directory); a missing file raises a clear error. Do not verify "
+    "paths beforehand, neither with local shell commands nor with list_files."
 )
 
 
-@mcp.tool
+@mcp.tool(annotations=READ_ONLY)
 def list_files(path: str = "~", pattern: str = "*", max_entries: int = 200) -> dict:
     """List files on the mdscope server host (structure/trajectory files and directories), within
-    the allowed roots. pattern is a glob such as '*.pdb' or '*.xtc'. Use this to find or verify
-    paths before load_system / view_structure."""
+    the allowed roots. pattern is a glob such as '*.pdb' or '*.xtc'. Use this only when the user
+    did not give a path, or a view/load call reported the file missing."""
     from mdscope.config import check_path
 
     root = check_path(path)
@@ -77,16 +88,17 @@ def list_files(path: str = "~", pattern: str = "*", max_entries: int = 200) -> d
     return {"path": str(root), "entries": entries, "truncated": len(entries) >= max_entries}
 
 
-@mcp.tool
+@mcp.tool(annotations=READ_ONLY)
 def load_system(topology: str, trajectory: str | list[str] | None = None, name: str | None = None) -> dict:
     """Load a structure file (.pdb/.gro/.cif/.tpr/.prmtop ...) and optionally trajectory file(s)
     (.xtc/.trr/.dcd/.nc ...). Returns a system_id and a composition summary (chains, ligands,
-    frames). Use the summary to write selection strings for view_structure. """ + PATH_NOTE
+    frames). Use the summary to write selection strings for view_structure. Not needed for a
+    plain view: view_structure / view_trajectory accept topology/trajectory directly. """ + PATH_NOTE
     system = loader.load(topology, trajectory, name)
     return loader.summarize(system)
 
 
-@mcp.tool
+@mcp.tool(annotations=READ_ONLY)
 def describe_system(system_id: str) -> dict:
     """Composition of a loaded system: protein chains with residue ranges and sequences, ligand
     candidates, water/ion counts, trajectory length. Selection syntax is MDAnalysis
@@ -135,15 +147,15 @@ def _respond(system, data: dict, what: str) -> ToolResult:
     return ToolResult(content=text, structured_content=structured, meta={PAYLOAD_KEY: data})
 
 
-@mcp.tool(app=AppConfig(resource_uri=VIEWER_URI), meta=VIEW_TOOL_META)
+@mcp.tool(app=AppConfig(resource_uri=VIEWER_URI), meta=VIEW_TOOL_META, annotations=READ_ONLY)
 def view_structure(
     system_id: str | None = None,
     topology: str | None = None,
     trajectory: str | list[str] | None = None,
     selection: str = "protein",
     frame: int = 0,
-    style: str = "cartoon",
-    color: str = "ss",
+    style: Style = "cartoon",
+    color: Color = "ss",
     highlight: str | None = None,
     title: str | None = None,
     pbc: bool | None = None,
@@ -152,7 +164,7 @@ def view_structure(
     support MCP Apps (ChatGPT, Claude Desktop) render it inline; others get a self-contained HTML
     file path/URL. Give either system_id (from load_system) or topology (+ trajectory) to load on
     the fly. selection: MDAnalysis selection of atoms to show (default 'protein'; bound ligands are
-    added automatically). style: cartoon|sticks|spheres|lines. color: ss|chain|rainbow|element.
+    added automatically). style and color: see the enum values (e.g. 'sticks', not 'stick').
     highlight: optional selection drawn as magenta sticks on top. pbc: make molecules whole across
     periodic boundaries (default: only when a trajectory is loaded). For playback of several
     frames use view_trajectory. """ + PATH_NOTE
@@ -161,7 +173,7 @@ def view_structure(
     return _respond(system, data, f"selection '{selection}', frame {frame}")
 
 
-@mcp.tool(app=AppConfig(resource_uri=VIEWER_URI), meta=VIEW_TOOL_META)
+@mcp.tool(app=AppConfig(resource_uri=VIEWER_URI), meta=VIEW_TOOL_META, annotations=READ_ONLY)
 def view_trajectory(
     system_id: str | None = None,
     topology: str | None = None,
@@ -171,8 +183,8 @@ def view_trajectory(
     stop: int | None = None,
     stride: int | None = None,
     max_frames: int = 50,
-    style: str = "cartoon",
-    color: str = "ss",
+    style: Style = "cartoon",
+    color: Color = "ss",
     highlight: str | None = None,
     title: str | None = None,
     pbc: bool = True,

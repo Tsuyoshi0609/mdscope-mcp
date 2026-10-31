@@ -48,13 +48,13 @@ Codex では「mdscope の `view_structure` で …… を見せて」のよう�
 
 | ツール | 主な引数 | 返すもの |
 |---|---|---|
-| `list_files` | `path`, `pattern="*"` | サーバー PC のファイル一覧。パスの確認用 |
+| `list_files` | `path`, `pattern="*"` | サーバー PC のファイル一覧。パスが分からないとき、見つからないと言われたときに使う |
 | `load_system` | `topology`, `trajectory`（任意、複数可） | `system_id` と組成（chain・残基範囲・配列、リガンド候補、水・イオン数、フレーム数） |
 | `describe_system` | `system_id` | 同上（選択文字列を書くための情報源） |
 | `view_structure` | `system_id` か `topology`（+ `trajectory`）, `selection="protein"`, `frame=0`, `style`, `color`, `highlight`, `title`, `pbc` | 1 フレームのビューア。HTML のパス（`artifacts[0].path`）と配信 URL（`url`、設定時のみ）、表示内容の要約、`warnings` |
 | `view_trajectory` | 同上 + `start`, `stop`, `stride`, `max_frames=50`, `align=True`, `hydrogens=False`, `max_payload_mb=8` | スライダー・再生付きのビューア。要約に `n_frames`, `time_span_ps` |
 | `get_view_payload` | `view_id` | ビューア用データ（PDB 文字列・座標・表示設定）。**ビューアが呼ぶ**もので、人が呼ぶ必要はない |
-| `mdscope_info` | — | バージョン、許可ルート、キャッシュ先、読込済みの系 |
+| `mdscope_info` | — | バージョン、許可ルート、キャッシュ先、読込済みの系。セットアップの診断用 |
 
 ### `view_structure` / `view_trajectory` の共通引数
 
