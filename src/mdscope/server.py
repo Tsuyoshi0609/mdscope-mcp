@@ -5,22 +5,23 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from typing import Literal
 
 from fastmcp import FastMCP
 from fastmcp.apps import AppConfig, ResourceCSP
 from fastmcp.tools import ToolResult
+from pydantic import BaseModel, Field
 
 from mdscope import __version__, loader, payload, registry
 from mdscope.config import allowed_roots, cache_dir
 from mdscope.html import read_payload, render_app_html, view_id, write_html
+from mdscope.payload import Color, Style
 from mdscope.serve import serve, view_url
 
 mcp = FastMCP("mdscope")
 
 # MCP Apps UI resource. Bump the version in the URI when the page changes incompatibly
 # (hosts cache ui:// resources).
-VIEWER_URI = "ui://mdscope/viewer/v3.html"
+VIEWER_URI = "ui://mdscope/viewer/v4.html"
 PAYLOAD_KEY = "mdscope/payload"
 
 SHOW_HINT = (
@@ -48,8 +49,14 @@ def viewer_app() -> str:
 # none of the tools change user data (view_* only write HTML into the cache dir)
 READ_ONLY = {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False}
 
-Style = Literal["cartoon", "sticks", "spheres", "lines"]
-Color = Literal["ss", "chain", "rainbow", "element"]
+
+
+class Layer(BaseModel):
+    """An extra representation drawn on top of the main one."""
+
+    selection: str = Field(description="MDAnalysis selection, e.g. 'around 5 resname LIG' or 'resid 10:20'")
+    style: Style = "sticks"
+    color: Color = "element"
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -112,7 +119,14 @@ VIEW_TOOL_META = {
     "openai/toolInvocation/invoked": "3D view ready",
 }
 # payload keys the model does not need (coordinates and viewer internals)
-_HIDDEN = ("pdb", "coords_b64", "highlight_serials", "notes", "frame_indices", "times_ps", "coord_scale")
+_HIDDEN = (
+    "pdb", "coords_b64", "highlight_serials", "base_serials", "layer_serials", "label_serials",
+    "notes", "frame_indices", "times_ps", "coord_scale",
+)
+
+
+def _layers(layers: list[Layer] | None) -> list[dict] | None:
+    return [ly.model_dump() for ly in layers] if layers else None
 
 
 def _system(system_id, topology, trajectory):
@@ -159,17 +173,25 @@ def view_structure(
     highlight: str | None = None,
     title: str | None = None,
     pbc: bool | None = None,
+    layers: list[Layer] | None = None,
+    labels: str | None = None,
 ) -> ToolResult:
     """Show an interactive 3D viewer (rotate/zoom) for one frame of a loaded system. Hosts that
     support MCP Apps (ChatGPT, Claude Desktop) render it inline; others get a self-contained HTML
     file path/URL. Give either system_id (from load_system) or topology (+ trajectory) to load on
     the fly. selection: MDAnalysis selection of atoms to show (default 'protein'; bound ligands are
-    added automatically). style and color: see the enum values (e.g. 'sticks', not 'stick').
-    highlight: optional selection drawn as magenta sticks on top. pbc: make molecules whole across
-    periodic boundaries (default: only when a trajectory is loaded). For playback of several
-    frames use view_trajectory. """ + PATH_NOTE
+    added automatically). style and color: see the enum values (e.g. 'sticks', not 'stick');
+    'surface' draws a molecular surface over the cartoon. layers: extra representations, each
+    {selection, style, color}, e.g. [{"selection": "around 5 resname LIG", "style": "sticks"}];
+    a layer may reach outside selection (e.g. water near a ligand). labels: selection whose
+    residues get name+number labels. highlight: selection drawn as magenta sticks on top. pbc:
+    make molecules whole across periodic boundaries (default: only when a trajectory is loaded).
+    The user can change style, color, layers, labels and theme later inside the viewer. For
+    playback of several frames use view_trajectory. """ + PATH_NOTE
     system = _system(system_id, topology, trajectory)
-    data = payload.build_payload(system, selection, frame, style, color, highlight, title, pbc)
+    data = payload.build_payload(
+        system, selection, frame, style, color, highlight, title, pbc, _layers(layers), labels
+    )
     return _respond(system, data, f"selection '{selection}', frame {frame}")
 
 
@@ -191,18 +213,22 @@ def view_trajectory(
     align: bool = True,
     max_payload_mb: float = 8.0,
     hydrogens: bool = False,
+    layers: list[Layer] | None = None,
+    labels: str | None = None,
 ) -> ToolResult:
     """Show an interactive 3D viewer with a frame slider and play button for an MD trajectory.
     Frames start:stop:stride are thinned evenly to at most max_frames (default 50) and further if
     the coordinates would exceed max_payload_mb. Molecules are made whole across periodic
     boundaries (pbc), centered, and aligned on CA atoms to the first frame (align) so the motion is
-    easy to see. Hydrogens are hidden unless hydrogens=True. Other arguments as in view_structure.
+    easy to see. Hydrogens are hidden unless hydrogens=True. Other arguments (style, color, layers,
+    labels, highlight) as in view_structure; distance-based layer selections are evaluated on the
+    first frame. A surface is redrawn when playback pauses.
     For a large system narrow the selection (e.g. 'name CA') or lower max_frames rather than raising
     max_payload_mb. """ + PATH_NOTE
     system = _system(system_id, topology, trajectory)
     data = payload.build_trajectory_payload(
         system, selection, start, stop, stride, max_frames, style, color, highlight, title,
-        pbc, align, max_payload_mb, hydrogens,
+        pbc, align, max_payload_mb, hydrogens, _layers(layers), labels,
     )
     n = data.get("n_frames", 1)
     what = f"selection '{selection}', {n} frames {data['frame']}..{data.get('frame_indices', [data['frame']])[-1]}"

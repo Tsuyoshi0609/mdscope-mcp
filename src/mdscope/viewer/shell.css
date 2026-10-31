@@ -21,3 +21,11 @@ body { display: flex; flex-direction: column; }
 #ctrl input[type="range"] { flex: 1; min-width: 100px; accent-color: var(--accent); }
 #ctrl #flabel { font-variant-numeric: tabular-nums; min-width: 11em; opacity: .8; }
 #play { min-width: 2.4em; }
+#layerbar { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 5px 12px;
+  background: var(--bar); border-bottom: 1px solid var(--border); font-size: 13px; }
+#layers { display: contents; }
+.layer, #layerbar .add { display: inline-flex; gap: 4px; align-items: center; }
+.layer .lname { max-width: 14em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#layerbar input[type="text"], #addsel { font: inherit; padding: 3px 6px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--fg); max-width: 100%; }
+#clearlabels { margin-left: auto; }

@@ -60,12 +60,6 @@ def test_view_structure_tool_roundtrip(tmp_path, monkeypatch):
 
 
 def test_view_tools_advertise_enums_and_read_only():
-    from typing import get_args
-
-    from mdscope.server import Color, Style
-
-    assert get_args(Style) == payload.STYLES and get_args(Color) == payload.COLORS
-
     async def go():
         async with Client(mcp) as c:
             return {t.name: t for t in await c.list_tools()}
@@ -74,3 +68,17 @@ def test_view_tools_advertise_enums_and_read_only():
     props = tools["view_trajectory"].inputSchema["properties"]
     assert props["style"]["enum"] == list(payload.STYLES)
     assert all(t.annotations.read_only_hint for n, t in tools.items() if n != "get_view_payload")
+
+
+def test_layers_can_reach_outside_the_selection():
+    s = loader.load(D.GRO, D.XTC)
+    lay = [{"selection": "resname SOL and around 3 protein", "style": "lines"}]
+    p = payload.build_trajectory_payload(s, "protein", max_frames=2, layers=lay, labels="resid 1:3")
+    prot = s.universe.select_atoms("protein and not (name H* or name [0-9]H*)").n_atoms
+    assert p["n_atoms"] > prot and len(p["base_serials"]) == prot
+    assert p["layers"] == [{"selection": lay[0]["selection"], "style": "lines", "color": "element"}]
+    assert set(p["layer_serials"][0]).isdisjoint(p["base_serials"])
+    assert len(p["label_serials"]) == 3
+    assert any("first frame" in n for n in p["notes"])
+    with pytest.raises(ValueError, match="style must be"):
+        payload.build_payload(s, layers=[{"selection": "protein", "style": "ribbon"}])

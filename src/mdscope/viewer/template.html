@@ -10,13 +10,19 @@
 <div id="bar">
   <b id="title"></b>
   <span class="meta" id="meta"></span>
-  <label>Style <select id="style">
-    <option value="cartoon">cartoon</option><option value="sticks">sticks</option>
-    <option value="spheres">spheres</option><option value="lines">lines</option></select></label>
-  <label>Color <select id="color">
-    <option value="ss">secondary structure</option><option value="chain">chain</option>
-    <option value="rainbow">rainbow (N→C)</option><option value="element">element</option></select></label>
+  <label>Style <select id="style"></select></label>
+  <label>Color <select id="color"></select></label>
   <button id="reset">Reset view</button>
+  <button id="theme" title="Light / dark">◐</button>
+</div>
+<div id="layerbar">
+  <span id="layers"></span>
+  <span class="add">
+    <input id="addsel" placeholder="residues: 10-20, A:30, LIG" size="18">
+    <select id="addstyle"></select><select id="addcolor"></select>
+    <button id="add">Add layer</button>
+  </span>
+  <button id="clearlabels" title="Click an atom to label its residue">Clear labels</button>
 </div>
 <div id="wrap"><div id="viewer"></div><div id="notes"></div></div>
 <div id="ctrl">

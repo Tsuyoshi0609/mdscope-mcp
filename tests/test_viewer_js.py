@@ -49,3 +49,25 @@ def test_single_frame_has_no_controls(tmp_path):
     s = loader.load(D.PDB_small)
     out = run_harness(payload.build_payload(s, "protein and name CA"), tmp_path)
     assert out["ctrlOn"] is False and out["calls"]["setFrame"] == [] and out["calls"]["setCoordinatesLen"] is None
+
+
+def test_layers_labels_and_surface(tmp_path):
+    s = loader.load(D.GRO, D.XTC)
+    p = payload.build_trajectory_payload(
+        s, "protein", max_frames=3, style="cartoon",
+        layers=[{"selection": "resid 5:8", "style": "surface", "color": "chain"}],
+        labels="resid 10:12", highlight="resid 20",
+    )
+    out = run_harness(p, tmp_path)
+    assert "surface" in out["styleOptions"]
+    assert out["layerRows"] == 2  # the layer and the highlight
+    assert len(out["labelsAtStart"]) == 3 and out["labelsMoved"] is True
+    # the layer surface is built when paused, hidden during playback and rebuilt on pause
+    assert out["surfacesAtStart"] == [len(p["layer_serials"][0])]
+    assert out["surfacesWhilePlaying"] == 0 and out["surfacesAfterPause"] == 1
+    assert out["surfacesAfterSwitch"] == 2  # main surface + layer surface
+    assert out["layerRowsAfterAdd"] == 3 and out["addedLayer"] > 0
+    assert "cannot read" in out["badInputNote"]
+    assert out["labelsAddedByClick"] == 1 and out["labelsAfterSecondClick"] == 0
+    assert out["labelsAfterClear"] == 0 and out["themeAfterToggle"] == "dark"
+    assert out["calls"]["clickableBeforeFrames"] is True

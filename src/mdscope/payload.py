@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import tempfile
 import warnings
+from typing import Literal, get_args
 
 import MDAnalysis as mda
 import numpy as np
@@ -16,8 +17,11 @@ from mdscope.config import cache_dir
 from mdscope.loader import LIGAND_SEL
 from mdscope.registry import System
 
-STYLES = ("cartoon", "sticks", "spheres", "lines")
-COLORS = ("ss", "chain", "rainbow", "element")
+Style = Literal["cartoon", "sticks", "spheres", "lines", "surface"]
+Color = Literal["ss", "chain", "rainbow", "element"]
+STYLES = get_args(Style)
+COLORS = get_args(Color)
+MAX_LABELS = 200
 
 
 def select(system: System, selection: str) -> mda.AtomGroup:
@@ -51,31 +55,75 @@ def _to_pdb(ag: mda.AtomGroup) -> str:
 HYDROGEN_SEL = "name H* or name [0-9]H*"
 
 
+def _check_layers(layers: list[dict] | None) -> list[dict]:
+    out = []
+    for i, ly in enumerate(layers or []):
+        ly = dict(ly)
+        if not ly.get("selection"):
+            raise ValueError(f"layers[{i}] needs a selection")
+        ly.setdefault("style", "sticks")
+        ly.setdefault("color", "element")
+        if ly["style"] not in STYLES or ly["color"] not in COLORS:
+            raise ValueError(f"layers[{i}]: style must be one of {STYLES}, color one of {COLORS}")
+        out.append({k: ly[k] for k in ("selection", "style", "color")})
+    return out
+
+
 def _atoms(
-    system: System, selection: str, highlight: str | None, notes: list[str], hydrogens: bool = True
-) -> tuple[mda.AtomGroup, list[int]]:
-    ag = select(system, selection)
+    system: System,
+    selection: str,
+    highlight: str | None,
+    layers: list[dict],
+    labels: str | None,
+    notes: list[str],
+    hydrogens: bool = True,
+) -> tuple[mda.AtomGroup, dict]:
+    """Atoms to embed (the selection plus any layer atoms outside it) and, per part, the 1-based
+    serial numbers they get in the written PDB."""
+    main = select(system, selection)
     if selection.strip() == "protein":
         # the default view should show bound ligands too
         lig = system.universe.select_atoms(LIGAND_SEL)
         if lig.n_atoms:
-            ag = ag | lig
+            main = main | lig
             notes.append(f"included {len(lig.residues)} non-protein residue(s) as ligands")
+    layer_ags = [select(system, ly["selection"]) for ly in layers]
+    ag = main
+    for la in layer_ags:
+        ag = ag | la  # a layer may add atoms outside the selection (e.g. nearby water)
     if not hydrogens:
         heavy = ag.select_atoms(f"not ({HYDROGEN_SEL})")
         if 0 < heavy.n_atoms < ag.n_atoms:
             notes.append(f"{ag.n_atoms - heavy.n_atoms} hydrogens hidden (hydrogens=True to show them)")
             ag = heavy
-    highlight_serials: list[int] = []
+    # serial numbers in the written PDB are 1..N in index order (| sorts by index)
+    index_of = {ix: i + 1 for i, ix in enumerate(ag.indices)}
+
+    def serials(group: mda.AtomGroup) -> list[int]:
+        return [index_of[ix] for ix in group.indices if ix in index_of]
+
+    parts: dict = {"base_serials": None, "layer_serials": [serials(la) for la in layer_ags]}
+    if ag.n_atoms > (main & ag).n_atoms:
+        parts["base_serials"] = serials(main)
+        notes.append(f"layers added {ag.n_atoms - (main & ag).n_atoms} atom(s) outside the selection")
+    parts["highlight_serials"] = []
     if highlight:
         hl = select(system, highlight)
         inside = hl & ag
         if inside.n_atoms < hl.n_atoms:
             notes.append(f"{hl.n_atoms - inside.n_atoms} highlighted atom(s) are outside the selection and not shown")
-        # serial numbers in the written PDB are 1..N in selection order
-        index_of = {ix: i + 1 for i, ix in enumerate(ag.indices)}
-        highlight_serials = [index_of[ix] for ix in inside.indices]
-    return ag, highlight_serials
+        parts["highlight_serials"] = serials(inside)
+    parts["label_serials"] = []
+    if labels:
+        res = (select(system, labels) & ag).residues
+        if len(res) > MAX_LABELS:
+            notes.append(f"labels: {len(res)} residues matched, only the first {MAX_LABELS} are labelled")
+            res = res[:MAX_LABELS]
+        for r in res:
+            # one label per residue, on CA when there is one
+            at = (r.atoms & ag).select_atoms("name CA") or (r.atoms & ag)
+            parts["label_serials"].append(index_of[at[0].ix])
+    return ag, parts
 
 
 def _build(
@@ -91,13 +139,18 @@ def _build(
     max_payload_mb: float,
     notes: list[str],
     hydrogens: bool = True,
+    layers: list[dict] | None = None,
+    labels: str | None = None,
 ) -> dict:
     if style not in STYLES:
         raise ValueError(f"style must be one of {STYLES}")
     if color not in COLORS:
         raise ValueError(f"color must be one of {COLORS}")
     u = system.universe
-    ag, highlight_serials = _atoms(system, selection, highlight, notes, hydrogens)
+    layers = _check_layers(layers)
+    ag, parts = _atoms(system, selection, highlight, layers, labels, notes, hydrogens)
+    if len(indices) > 1 and any(w in ly["selection"] for ly in layers for w in ("around", "sphzone")):
+        notes.append("distance-based layer selections are evaluated on the first frame (the atom set stays fixed)")
     fr = trajectory.extract(u, ag, indices, pbc=pbc, align=align, max_payload_mb=max_payload_mb)
     notes.extend(fr.notes)
 
@@ -117,7 +170,9 @@ def _build(
         "style": style,
         "color": color,
         "highlight": highlight,
-        "highlight_serials": highlight_serials,
+        "layers": layers,
+        "labels": labels,
+        **parts,
         "pbc": fr.pbc_applied,
         "pdb": pdb,
         "notes": notes,
@@ -145,6 +200,8 @@ def build_payload(
     highlight: str | None = None,
     title: str | None = None,
     pbc: bool | None = None,
+    layers: list[dict] | None = None,
+    labels: str | None = None,
 ) -> dict:
     """One frame. pbc=None means: correct periodic wrapping only when a trajectory was loaded
     (structure files are shown as they are)."""
@@ -157,6 +214,7 @@ def build_payload(
     return _build(
         system, np.array([frame]), selection, style, color, highlight, title,
         pbc=pbc, align=False, max_payload_mb=trajectory.MAX_PAYLOAD_MB, notes=notes,
+        layers=layers, labels=labels,
     )
 
 
@@ -175,6 +233,8 @@ def build_trajectory_payload(
     align: bool = True,
     max_payload_mb: float = trajectory.MAX_PAYLOAD_MB,
     hydrogens: bool = False,
+    layers: list[dict] | None = None,
+    labels: str | None = None,
 ) -> dict:
     """Several frames for playback: start:stop:stride thinned to max_frames, within max_payload_mb.
     Hydrogens are dropped by default (they double the atom count and add little to playback)."""
@@ -185,4 +245,5 @@ def build_trajectory_payload(
     return _build(
         system, indices, selection, style, color, highlight, title,
         pbc=pbc, align=align, max_payload_mb=max_payload_mb, notes=notes, hydrogens=hydrogens,
+        layers=layers, labels=labels,
     )
